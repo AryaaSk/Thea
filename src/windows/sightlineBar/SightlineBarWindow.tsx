@@ -39,15 +39,7 @@ export default function SightlineBarWindow() {
       }),
       ipc.subscribe('sightline:chat', (data) => {
         const msg = data as ChatMessage;
-        setMessages((prev) => {
-          if (msg.replace && prev.length > 0 && prev[prev.length - 1].role === 'assistant') {
-            return [
-              ...prev.slice(0, -1),
-              { ...prev[prev.length - 1], text: prev[prev.length - 1].text + msg.text },
-            ];
-          }
-          return [...prev, msg];
-        });
+        setMessages((prev) => [...prev, msg]);
       }),
       ipc.subscribe('sightline:step', (data) => {
         const step = data as AutomationStep;

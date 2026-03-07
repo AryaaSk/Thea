@@ -84,9 +84,6 @@ class SessionManager {
         return;
       }
 
-      // Show user's text in the bar
-      windowManager.broadcastToAll('sightline:chat', { role: 'user', text });
-
       // Check for cancel command
       if (text.toLowerCase().trim().includes('cancel')) {
         await this.cancel();
@@ -129,7 +126,7 @@ class SessionManager {
     }
 
     try {
-      await openclawClient.run(fullInstruction);
+      await openclawClient.run(instruction, fullInstruction);
     } catch (error) {
       console.error('[SessionManager] OpenClaw run failed:', error);
       ttsService.speakImmediate('Something went wrong. Please try again.');
@@ -151,7 +148,6 @@ class SessionManager {
   private setState(state: SightlineState): void {
     this.state = state;
     if (state === 'idle') {
-      windowManager.hideSightlineBar();
       windowManager.hideBorderOverlay();
     } else {
       windowManager.showSightlineBar();

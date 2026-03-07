@@ -14,7 +14,6 @@ export interface ChatMessage {
   role: 'assistant' | 'user';
   text: string;
   isError?: boolean;
-  replace?: boolean;
 }
 
 export interface SightlineConfig {

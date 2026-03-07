@@ -6,7 +6,7 @@ import { openclawManager } from '../managers/openclawManager.js';
 import { SESSION_KEY } from '../utils/constants.js';
 import { loadOrCreateDeviceIdentity, buildDeviceAuthPayload, signPayload, publicKeyRawBase64Url } from '../utils/deviceIdentity.js';
 import type { DeviceIdentity } from '../utils/deviceIdentity.js';
-import type { AutomationStep, ChatMessage } from '../../../shared/types.js';
+import type { AutomationStep } from '../../../shared/types.js';
 
 const SCOPES = ['operator.read', 'operator.write', 'operator.admin'];
 
@@ -240,18 +240,33 @@ class OpenClawClient {
             }
             if (textParts.length > 0) {
               this.streamingDeltaCount++;
-              const chatMsg: ChatMessage = {
-                role: 'assistant',
-                text: textParts.join('\n'),
-                replace: this.streamingDeltaCount > 1,
-              };
-              windowManager.broadcastToAll('sightline:chat', chatMsg);
+              // Don't broadcast deltas to UI (causes duplication) — only notify TTS callback
               this.eventCallbacks.onChatDelta?.(textParts.join('\n'));
             }
           }
         }
       } else if (state === 'final') {
         console.log('[OpenClawClient] Agent done');
+        // Extract final complete message and broadcast once to UI
+        if (typeof rawMessage === 'object' && rawMessage !== null) {
+          const msg = rawMessage as Record<string, unknown>;
+          const content = msg.content;
+          if (Array.isArray(content)) {
+            const textParts: string[] = [];
+            for (const block of content) {
+              const b = block as Record<string, unknown>;
+              if (b.type === 'text' && b.text) {
+                textParts.push(b.text as string);
+              }
+            }
+            if (textParts.length > 0) {
+              windowManager.broadcastToAll('sightline:chat', {
+                role: 'assistant',
+                text: textParts.join('\n'),
+              });
+            }
+          }
+        }
         this.streamingDeltaCount = 0;
         this.eventCallbacks.onChatFinal?.();
         if (this.runResolve) {
@@ -321,7 +336,7 @@ class OpenClawClient {
     return toolName;
   }
 
-  async run(instruction: string): Promise<void> {
+  async run(displayInstruction: string, fullInstruction: string): Promise<void> {
     if (!this.isConnected) {
       await this.connect();
     }
@@ -329,14 +344,14 @@ class OpenClawClient {
     this.currentSteps = [];
     this.streamingDeltaCount = 0;
 
-    // Show user's instruction in the bar
-    windowManager.broadcastToAll('sightline:chat', { role: 'user', text: instruction });
+    // Show only the clean user instruction in the bar (no system prompt)
+    windowManager.broadcastToAll('sightline:chat', { role: 'user', text: displayInstruction });
 
     return new Promise<void>((resolve) => {
       this.runResolve = resolve;
 
       this.request('chat.send', {
-        message: instruction,
+        message: fullInstruction,
         idempotencyKey: crypto.randomUUID(),
         sessionKey: SESSION_KEY,
       }).catch((error) => {
