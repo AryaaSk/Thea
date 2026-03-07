@@ -74,8 +74,37 @@ export default function SightlineBarWindow() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const playStartChime = useCallback(() => {
+    const ctx = new AudioContext();
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+
+    // Two ascending tones like Siri's activation chime
+    const notes = [
+      { freq: 880, start: 0, duration: 0.08 },
+      { freq: 1320, start: 0.09, duration: 0.12 },
+    ];
+
+    notes.forEach(({ freq, start, duration }) => {
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+      env.gain.setValueAtTime(0, ctx.currentTime + start);
+      env.gain.linearRampToValueAtTime(0.18, ctx.currentTime + start + 0.01);
+      env.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + duration);
+      osc.connect(env);
+      env.connect(gain);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + duration);
+    });
+
+    setTimeout(() => ctx.close(), 500);
+  }, []);
+
   const startRecording = useCallback(async () => {
     try {
+      playStartChime();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
@@ -96,8 +125,10 @@ export default function SightlineBarWindow() {
       };
       updateLevel();
 
-      // Start recording
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      // Start recording - pick best supported format (webm not supported on macOS)
+      const preferredTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+      const supportedType = preferredTypes.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
+      const recorder = new MediaRecorder(stream, supportedType ? { mimeType: supportedType } : {});
       audioChunksRef.current = [];
 
       recorder.ondataavailable = (e) => {
@@ -126,7 +157,8 @@ export default function SightlineBarWindow() {
 
     return new Promise<void>((resolve) => {
       recorder.onstop = async () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const actualMimeType = recorder.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: actualMimeType });
 
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -137,7 +169,7 @@ export default function SightlineBarWindow() {
           if (base64) {
             await ipc.invoke('sightline:transcribe', {
               audioBase64: base64,
-              mimeType: 'audio/webm',
+              mimeType: actualMimeType,
             });
           }
           resolve();
