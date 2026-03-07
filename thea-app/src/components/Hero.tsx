@@ -43,7 +43,7 @@ export function Hero() {
           ref={logoRef}
         />
         <p className="hero-tagline reveal" ref={taglineRef}>
-          Full computer access for blind and low-vision users &mdash; just by talking.
+          The web, fully accessible &mdash; for blind and low-vision users, just by talking.
         </p>
 
         <div className="hero-glass reveal" ref={glassRef}>
@@ -51,11 +51,11 @@ export function Hero() {
             <div className="mini-convo">
               <div className="mini-msg mini-msg-user">
                 <span className="mini-msg-label">You</span>
-                "Open my email and read the latest message."
+                "Open my email and read the latest message from Dr. Patel."
               </div>
               <div className="mini-msg mini-msg-agent">
                 <span className="mini-msg-label">Thea</span>
-                Opening Gmail… You have one new message from Dr. Patel about your appointment tomorrow at 2 PM.
+                Opening Gmail… Found it. Dr. Patel says your appointment is confirmed for tomorrow at 2 PM. Would you like to reply?
               </div>
             </div>
 

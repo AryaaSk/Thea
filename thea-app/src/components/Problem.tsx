@@ -1,9 +1,9 @@
 import { useScrollReveal } from '../hooks/useScrollReveal';
 
 const stats = [
-  { number: '2.2B', label: 'PEOPLE WITH VISION IMPAIRMENT' },
-  { number: '95%', label: 'OF WEBSITES FAIL ACCESSIBILITY' },
-  { number: '0', label: 'TOOLS THAT TRULY WORK' },
+  { number: '2.2B', label: 'PEOPLE WITH VISION IMPAIRMENT WORLDWIDE' },
+  { number: '96%', label: 'OF WEBSITES FAIL BASIC ACCESSIBILITY' },
+  { number: '3–5×', label: 'LONGER TO COMPLETE BASIC TASKS' },
   { number: '1', label: 'VOICE IS ALL YOU NEED' },
 ];
 
@@ -26,16 +26,16 @@ export function Problem() {
 
             <div className="problem-paragraphs">
               <p>
-                Screen readers haven't fundamentally changed in decades. They read elements one by one, left to right, top to bottom — forcing users to build a mental map of every page.
+                Screen readers haven't fundamentally changed in decades. They read elements one by one, left to right, top to bottom — forcing users to build a mental map of every page they visit.
               </p>
               <p>
-                Most apps and websites are built without accessibility in mind. Unlabeled buttons, missing alt text, custom components that screen readers can't parse.
+                96% of websites are built without accessibility in mind. Unlabeled buttons, missing alt text, custom components that screen readers can't parse — every page is a new obstacle course.
               </p>
               <p>
-                The result: blind and low-vision users spend 3&ndash;5x longer on basic tasks that sighted users complete in seconds. Entire workflows become impossible.
+                The result: blind and low-vision users spend 3&ndash;5× longer on tasks sighted users complete in seconds. Online banking, job applications, healthcare portals — entire workflows become impossible.
               </p>
               <p>
-                AI can now see screens, understand context, and take action. But nobody has built it for the people who need it most. Until now.
+                AI can now understand web pages, reason about their content, and take action. We built Thea to put that power in the hands of the people who need it most.
               </p>
             </div>
           </div>

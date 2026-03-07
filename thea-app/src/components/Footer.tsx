@@ -39,7 +39,7 @@ export function Footer() {
       <div className="footer-bottom">
         <div className="container">
           <div className="footer-bottom-inner">
-            <p className="footer-a11y-badge">Built for the blind and low-vision community</p>
+            <p className="footer-a11y-badge">Built for the blind and low-vision community &mdash; Claude Builder Club Hackathon 2026</p>
             <p className="footer-copy">&copy; 2026 Thea. All rights reserved.</p>
           </div>
         </div>
