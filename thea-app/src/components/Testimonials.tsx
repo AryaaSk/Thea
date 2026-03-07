@@ -167,9 +167,9 @@ export function Testimonials() {
       <section id="testimonials" aria-label="Testimonials">
         <div className="container">
           <SectionHeader
-            tag="TESTIMONIALS"
-            label="Hear from our community"
-            sub="Real stories from people who got their digital independence back."
+            tag="IMPACT"
+            label="Independence restored"
+            sub="Real stories from blind and low-vision users whose relationship with the web has changed."
           />
 
           <div className="testimonial-grid">

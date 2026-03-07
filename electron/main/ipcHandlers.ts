@@ -143,5 +143,17 @@ export function registerIpcHandlers(): void {
     windowManager.showConfigWindow();
   });
 
+  ipcMain.handle('window:set-pill-expanded', (_event, data: { expanded: boolean }) => {
+    windowManager.resizeSightlineBar(data.expanded);
+  });
+
+  ipcMain.handle('window:hide-pill', () => {
+    windowManager.hideSightlineBar();
+  });
+
+  ipcMain.handle('window:show-pill', () => {
+    windowManager.showSightlineBar();
+  });
+
   console.log('IPC handlers registered');
 }

@@ -22,8 +22,8 @@ function FeatureCard({ icon, title, desc, delay }: FeatureData) {
 const features: FeatureData[] = [
   {
     delay: 0,
-    title: 'Screen Understanding',
-    desc: 'Thea sees what\u2019s on your screen and describes it in plain language. Menus, buttons, text, images \u2014 nothing is hidden.',
+    title: 'Web Page Understanding',
+    desc: 'Thea reads any web page and describes it in plain language. Menus, buttons, text, images \u2014 nothing is hidden, even on poorly built sites.',
     icon: (
       <svg className="feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <rect x="8" y="4" width="32" height="40" rx="3" />
@@ -36,7 +36,7 @@ const features: FeatureData[] = [
   {
     delay: 80,
     title: 'Full Voice Control',
-    desc: 'Control your entire computer with your voice. Open apps, click buttons, type text, manage files \u2014 all by speaking naturally.',
+    desc: 'Navigate any website with your voice. Open pages, click buttons, type text, submit forms \u2014 all hands-free, from anywhere on your desktop.',
     icon: (
       <svg className="feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <rect x="18" y="6" width="12" height="22" rx="6" />
@@ -79,8 +79,8 @@ const features: FeatureData[] = [
   },
   {
     delay: 80,
-    title: 'Intent Actions',
-    desc: 'Speak your goal, not commands. "Send the report to my manager" triggers the right app, attaches the file, and drafts the email.',
+    title: 'Intent-Based Actions',
+    desc: 'Speak your goal, not commands. "Find me a train to London tomorrow morning" — Thea navigates, searches, and reads back your options.',
     icon: (
       <svg className="feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="24" cy="24" r="20" />
@@ -92,8 +92,8 @@ const features: FeatureData[] = [
   },
   {
     delay: 160,
-    title: 'Safe Confirmation',
-    desc: 'Deleting files, sending payments, or submitting forms \u2014 Thea always asks before taking irreversible actions.',
+    title: 'You Stay in Control',
+    desc: 'Thea executes your intent \u2014 it never acts alone on irreversible tasks. Payments, form submissions, account changes always require your explicit confirmation first.',
     icon: (
       <svg className="feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M24 4L6 14v12c0 11 8 18 18 22 10-4 18-11 18-22V14L24 4z" />
@@ -110,7 +110,7 @@ export function Features() {
         <SectionHeader
           tag="FEATURES"
           label="Everything you need, nothing you can't reach"
-          sub="Six capabilities that give blind and low-vision users complete control of their computer."
+          sub="Six capabilities that give blind and low-vision users complete, independent access to the web — powered by Claude AI, with you in control."
         />
         <div className="features-grid">
           {features.map((f, i) => (

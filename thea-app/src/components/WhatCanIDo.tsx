@@ -63,14 +63,14 @@ export function WhatCanIDo() {
           <div className="what-response reveal" ref={responseRef}>
             <div className="what-response-q">"What can I do right now?"</div>
             <ul>
-              <li>Open or switch between apps</li>
-              <li>Read and reply to emails</li>
-              <li>Edit your open document</li>
-              <li>Search the web for anything</li>
-              <li>Manage files and folders</li>
+              <li>Read and reply to emails in Gmail</li>
+              <li>Search the web and hear results read back</li>
+              <li>Fill in forms on any website</li>
+              <li>Book travel or shop online</li>
+              <li>Navigate banking or government portals</li>
             </ul>
             <p className="what-response-note">
-              For blind and low-vision users, this single question replaces every visual menu, toolbar, and icon on screen.
+              For blind and low-vision users, this single question replaces every visual menu, toolbar, and icon on any website.
             </p>
           </div>
         </div>

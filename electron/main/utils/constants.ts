@@ -10,9 +10,11 @@ export const CONFIG_WINDOW = {
 };
 
 export const SIGHTLINE_BAR = {
-  width: 400,
-  height: 300,
-  bottomOffset: 20,
+  pillWidth: 190,
+  pillHeight: 44,
+  expandedWidth: 400,
+  expandedHeight: 540,
+  topOffset: 16,
 };
 
 export const STORE_KEYS = {

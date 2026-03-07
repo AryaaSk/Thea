@@ -23,8 +23,8 @@ const steps = [
     ),
   },
   {
-    label: 'AI understands',
-    desc: 'Claude figures out exactly what you mean',
+    label: 'Claude reasons',
+    desc: 'Claude AI interprets your intent in full context',
     icon: (
       <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <circle cx="14" cy="14" r="10" />
@@ -34,8 +34,8 @@ const steps = [
     ),
   },
   {
-    label: 'Reads your screen',
-    desc: 'Thea sees everything on your display',
+    label: 'Reads the page',
+    desc: 'Thea sees and understands the full web page',
     icon: (
       <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <rect x="3" y="3" width="22" height="22" rx="3" />
@@ -79,7 +79,7 @@ export function HowItWorks() {
         <SectionHeader
           tag="HOW IT WORKS"
           label="How Thea works"
-          sub="Just talk. Thea handles everything else."
+          sub="Hold a key, speak naturally, hear the result. Claude AI handles the rest — and always asks before acting on anything important."
         />
         <div className="pipeline reveal" ref={pipelineRef} role="list" aria-label="Pipeline steps">
           {steps.map((step, i) => (

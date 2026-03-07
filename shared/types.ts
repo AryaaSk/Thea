@@ -71,6 +71,9 @@ export interface IpcChannels {
 
   // Window
   'window:show-config': { request: void; response: void; broadcast: never };
+  'window:set-pill-expanded': { request: { expanded: boolean }; response: void; broadcast: never };
+  'window:hide-pill': { request: void; response: void; broadcast: never };
+  'window:show-pill': { request: void; response: void; broadcast: never };
 
   // Broadcasts (main -> renderer)
   'sightline:state-changed': { request: never; response: never; broadcast: { state: SightlineState; text?: string } };

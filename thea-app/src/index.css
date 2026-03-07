@@ -247,8 +247,8 @@ section {
   width: auto;
   filter: brightness(0);
   display: block;
-  margin: -14px 0 -10px;
   object-fit: contain;
+  transform: translateY(-8px);
 }
 
 .nav-logo span {

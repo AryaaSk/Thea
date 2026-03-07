@@ -101,13 +101,13 @@ class WindowManager {
     }
 
     const primaryDisplay = screen.getPrimaryDisplay();
-    const { x: displayX, y: displayY, width: displayWidth, height: displayHeight } = primaryDisplay.workArea;
-    const xPos = displayX + Math.round((displayWidth - SIGHTLINE_BAR.width) / 2);
-    const yPos = displayY + displayHeight - SIGHTLINE_BAR.height - SIGHTLINE_BAR.bottomOffset;
+    const { x: displayX, y: displayY, width: displayWidth } = primaryDisplay.workArea;
+    const xPos = displayX + Math.round((displayWidth - SIGHTLINE_BAR.pillWidth) / 2);
+    const yPos = displayY + SIGHTLINE_BAR.topOffset;
 
     this.sightlineBarWindow = new BrowserWindow({
-      width: SIGHTLINE_BAR.width,
-      height: SIGHTLINE_BAR.height,
+      width: SIGHTLINE_BAR.pillWidth,
+      height: SIGHTLINE_BAR.pillHeight,
       x: xPos,
       y: yPos,
       frame: false,
@@ -115,8 +115,9 @@ class WindowManager {
       alwaysOnTop: true,
       skipTaskbar: true,
       resizable: false,
-      hasShadow: true,
+      hasShadow: false,
       focusable: true,
+      roundedCorners: false,
       backgroundColor: '#00000000',
       show: false,
       webPreferences: {
@@ -137,11 +138,27 @@ class WindowManager {
 
     this.sightlineBarWindow.once('ready-to-show', () => {
       if (this.sightlineBarWindow && !this.sightlineBarWindow.isDestroyed()) {
-        this.sightlineBarWindow.showInactive();
+        this.sightlineBarWindow.show();
       }
     });
 
     return this.sightlineBarWindow;
+  }
+
+  resizeSightlineBar(expanded: boolean): void {
+    if (!this.sightlineBarWindow || this.sightlineBarWindow.isDestroyed()) return;
+    const bounds = this.sightlineBarWindow.getBounds();
+    const targetWidth = expanded ? SIGHTLINE_BAR.expandedWidth : SIGHTLINE_BAR.pillWidth;
+    const targetHeight = expanded ? SIGHTLINE_BAR.expandedHeight : SIGHTLINE_BAR.pillHeight;
+    // Keep centered: adjust x so the pill stays horizontally centered
+    const newX = bounds.x + Math.round((bounds.width - targetWidth) / 2);
+
+    this.sightlineBarWindow.setBounds({
+      x: newX,
+      y: bounds.y,
+      width: targetWidth,
+      height: targetHeight,
+    });
   }
 
   hideSightlineBar(): void {

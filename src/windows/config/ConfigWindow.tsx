@@ -2,76 +2,35 @@ import { useState, useEffect, useCallback } from 'react';
 import { ipc } from '../../lib/ipc';
 import type { SightlineConfig, OpenClawStatus } from '../../../shared/types';
 
-type Tab = 'settings' | 'openclaw';
+type Tab = 'general' | 'engine';
 
-function StatusDot({ status }: { status: OpenClawStatus }) {
-  const color = status === 'ready' ? 'bg-green-500' : status === 'starting' ? 'bg-yellow-500' : status === 'error' ? 'bg-red-500' : 'bg-gray-500';
-  return <span className={`inline-block w-2.5 h-2.5 rounded-full ${color}`} />;
-}
+// ── Reusable Components ──
 
-function ApiKeyInput({
-  label,
-  value,
-  onChange,
-  onSave,
-  onTest,
-  onClear,
-  hasKey,
-  testResult,
-  testing,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  onSave: () => void;
-  onTest?: () => void;
-  onClear: () => void;
-  hasKey: boolean;
-  testResult?: boolean | null;
-  testing?: boolean;
-}) {
+function StatusBadge({ status }: { status: OpenClawStatus }) {
+  const config: Record<OpenClawStatus, { bg: string; text: string; label: string }> = {
+    ready: { bg: 'rgba(34,197,94,0.1)', text: '#16A34A', label: 'Ready' },
+    starting: { bg: 'rgba(234,179,8,0.1)', text: '#CA8A04', label: 'Starting' },
+    error: { bg: 'rgba(239,68,68,0.1)', text: '#DC2626', label: 'Error' },
+    stopped: { bg: 'rgba(156,163,175,0.1)', text: '#6B7280', label: 'Stopped' },
+  };
+  const c = config[status];
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-[var(--text-secondary)]">{label}</label>
-      <div className="flex gap-2">
-        <input
-          type="password"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={hasKey ? 'Key configured (hidden)' : 'Enter API key...'}
-          className="flex-1 px-3 py-2 rounded-lg bg-[var(--surface-bg)] border border-[var(--border-light)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-        <button
-          onClick={onSave}
-          disabled={!value}
-          className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-40 hover:bg-blue-500 transition-colors"
-        >
-          Save
-        </button>
-        {onTest && (
-          <button
-            onClick={onTest}
-            disabled={!value || testing}
-            className="px-3 py-2 rounded-lg bg-[var(--surface-bg)] border border-[var(--border-light)] text-sm disabled:opacity-40 hover:bg-[var(--surface-hover)] transition-colors"
-          >
-            {testing ? '...' : 'Test'}
-          </button>
-        )}
-        {hasKey && (
-          <button
-            onClick={onClear}
-            className="px-3 py-2 rounded-lg bg-[var(--surface-bg)] border border-[var(--border-light)] text-sm text-red-400 hover:bg-[var(--surface-hover)] transition-colors"
-          >
-            Clear
-          </button>
-        )}
-      </div>
-      {testResult !== undefined && testResult !== null && (
-        <p className={`text-xs ${testResult ? 'text-green-400' : 'text-red-400'}`}>
-          {testResult ? 'Key is valid' : 'Key is invalid'}
-        </p>
-      )}
-    </div>
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '4px 10px',
+        borderRadius: 12,
+        background: c.bg,
+        fontSize: 12,
+        fontWeight: 500,
+        color: c.text,
+      }}
+    >
+      <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: c.text }} />
+      {c.label}
+    </span>
   );
 }
 
@@ -79,21 +38,213 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (v: b
   return (
     <button
       onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        enabled ? 'bg-blue-600' : 'bg-gray-600'
-      }`}
+      style={{
+        position: 'relative',
+        width: 40,
+        height: 22,
+        borderRadius: 11,
+        border: 'none',
+        background: enabled ? '#FFA100' : '#D1D5DB',
+        cursor: 'pointer',
+        transition: 'background 0.2s',
+        flexShrink: 0,
+      }}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-          enabled ? 'translate-x-6' : 'translate-x-1'
-        }`}
+        style={{
+          position: 'absolute',
+          top: 3,
+          left: enabled ? 21 : 3,
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          background: '#fff',
+          transition: 'left 0.2s',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+        }}
       />
     </button>
   );
 }
 
+function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div
+      style={{
+        background: '#F9F9FB',
+        border: '1px solid #E8E8EC',
+        borderRadius: 12,
+        padding: 20,
+        marginBottom: 16,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CardHeader({
+  title,
+  description,
+  right,
+  indicator,
+}: {
+  title: string;
+  description?: string;
+  right?: React.ReactNode;
+  indicator?: 'green' | 'gray';
+}) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: description ? 12 : 8 }}>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1e', margin: 0 }}>{title}</h3>
+          {indicator && (
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: indicator === 'green' ? '#22C55E' : '#D1D5DB',
+              }}
+            />
+          )}
+        </div>
+        {description && (
+          <p style={{ fontSize: 12, color: '#6B7280', margin: '4px 0 0 0' }}>{description}</p>
+        )}
+      </div>
+      {right}
+    </div>
+  );
+}
+
+function KeyInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <input
+      type="password"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      style={{
+        width: '100%',
+        padding: '8px 12px',
+        borderRadius: 8,
+        border: '1px solid #E8E8EC',
+        background: '#fff',
+        color: '#1a1a1e',
+        fontSize: 13,
+        fontFamily: 'monospace',
+        outline: 'none',
+        boxSizing: 'border-box',
+      }}
+      onFocus={(e) => { e.target.style.borderColor = '#FFA100'; }}
+      onBlur={(e) => { e.target.style.borderColor = '#E8E8EC'; }}
+    />
+  );
+}
+
+function PrimaryButton({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: '7px 16px',
+        borderRadius: 8,
+        border: 'none',
+        background: disabled ? '#F0E6D0' : '#FFA100',
+        color: disabled ? '#B0A080' : '#fff',
+        fontSize: 13,
+        fontWeight: 500,
+        cursor: disabled ? 'default' : 'pointer',
+        transition: 'all 0.15s, transform 0.15s',
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.background = '#E89100';
+          e.currentTarget.style.transform = 'scale(1.03)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.background = '#FFA100';
+          e.currentTarget.style.transform = 'scale(1)';
+        }
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SecondaryButton({
+  onClick,
+  disabled,
+  children,
+  danger,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: '7px 16px',
+        borderRadius: 8,
+        border: '1px solid #E8E8EC',
+        background: '#fff',
+        color: disabled ? '#D1D5DB' : danger ? '#DC2626' : '#6B7280',
+        fontSize: 13,
+        fontWeight: 500,
+        cursor: disabled ? 'default' : 'pointer',
+        transition: 'all 0.15s, transform 0.15s',
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.background = '#F5F5F5';
+          e.currentTarget.style.color = danger ? '#EF4444' : '#1a1a1e';
+          e.currentTarget.style.transform = 'scale(1.03)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.background = '#fff';
+          e.currentTarget.style.color = danger ? '#DC2626' : '#6B7280';
+          e.currentTarget.style.transform = 'scale(1)';
+        }
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── Main Component ──
+
 export default function ConfigWindow() {
-  const [activeTab, setActiveTab] = useState<Tab>('settings');
+  const [activeTab, setActiveTab] = useState<Tab>('general');
   const [config, setConfig] = useState<SightlineConfig | null>(null);
   const [provider, setProvider] = useState('anthropic');
   const [providerKey, setProviderKey] = useState('');
@@ -105,11 +256,10 @@ export default function ConfigWindow() {
   const [gatewayMessage, setGatewayMessage] = useState('');
   const [dashboardUrl, setDashboardUrl] = useState('');
 
-  // OpenClaw tab state
   const [browserAutomation, setBrowserAutomation] = useState(true);
   const [skills, setSkills] = useState<Array<{ id: string; name: string; enabled: boolean }>>([]);
   const [paths, setPaths] = useState<{ configDir: string; openclawDir: string } | null>(null);
-  const [pathsExpanded, setPathsExpanded] = useState(false);
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -141,24 +291,19 @@ export default function ConfigWindow() {
 
   useEffect(() => {
     loadConfig();
-
     const unsub = ipc.subscribe('openclaw:status-changed', (data) => {
       const d = data as { status: OpenClawStatus; message?: string };
       setGatewayStatus(d.status);
       setGatewayMessage(d.message || '');
-      // Refresh dashboard URL when status changes
       ipc.invoke('sightline:get-dashboard-url')
         .then((url) => { if (typeof url === 'string') setDashboardUrl(url); })
         .catch(() => {});
     });
-
     return unsub;
   }, [loadConfig]);
 
   useEffect(() => {
-    if (activeTab === 'openclaw') {
-      loadOpenClawData();
-    }
+    if (activeTab === 'engine') loadOpenClawData();
   }, [activeTab, loadOpenClawData]);
 
   const handleSaveProviderKey = async () => {
@@ -218,204 +363,337 @@ export default function ConfigWindow() {
 
   if (!config) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <p className="text-[var(--text-secondary)]">Loading...</p>
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+        <p style={{ color: '#6B7280' }}>Loading...</p>
       </div>
     );
   }
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'settings', label: 'Settings' },
-    { id: 'openclaw', label: 'OpenClaw' },
-  ];
-
   return (
-    <div className="h-full flex flex-col">
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#FFFFFF', color: '#1a1a1e' }}>
       {/* Title bar drag region */}
-      <div className="drag-region h-12 flex items-center justify-center flex-shrink-0">
-        <h1 className="text-sm font-semibold tracking-wide">Sightline Settings</h1>
+      <div
+        className="drag-region"
+        style={{
+          height: 52,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          paddingTop: 8,
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: '#1a1a1e' }}>Thea</h1>
+          <p style={{ fontSize: 11, color: '#6B7280', margin: '2px 0 0 0' }}>Voice-first AI assistant</p>
+        </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex border-b border-[var(--border-light)] px-8 flex-shrink-0">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
-              activeTab === tab.id
-                ? 'text-blue-400'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            {tab.label}
-            {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
-            )}
-          </button>
-        ))}
+      {/* Launch Assistant button */}
+      <div style={{ padding: '12px 24px 0', flexShrink: 0 }}>
+        <button
+          onClick={() => ipc.invoke('window:show-pill')}
+          style={{
+            width: '100%', padding: '10px 0', borderRadius: 10,
+            border: '1px solid rgba(255,161,0,0.3)',
+            background: 'rgba(255,161,0,0.08)',
+            color: '#FFA100', fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', transition: 'all 0.15s, transform 0.15s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,161,0,0.14)';
+            e.currentTarget.style.transform = 'scale(1.02)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255,161,0,0.08)';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="3" stroke="#FFA100" strokeWidth="2" />
+            <line x1="12" y1="2" x2="12" y2="7" stroke="#FFA100" strokeWidth="2" strokeLinecap="round" />
+            <line x1="12" y1="17" x2="12" y2="22" stroke="#FFA100" strokeWidth="2" strokeLinecap="round" />
+            <line x1="2" y1="12" x2="7" y2="12" stroke="#FFA100" strokeWidth="2" strokeLinecap="round" />
+            <line x1="17" y1="12" x2="22" y2="12" stroke="#FFA100" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          Launch Assistant
+        </button>
+      </div>
+
+      {/* Segmented tab control */}
+      <div style={{ padding: '12px 24px 0', flexShrink: 0 }}>
+        <div
+          style={{
+            display: 'inline-flex',
+            borderRadius: 10,
+            background: '#F0F0F2',
+            padding: 3,
+            gap: 2,
+          }}
+        >
+          {[
+            { id: 'general' as Tab, label: 'General' },
+            { id: 'engine' as Tab, label: 'Engine' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '6px 20px',
+                borderRadius: 8,
+                border: 'none',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: 'pointer',
+                background: activeTab === tab.id ? '#fff' : 'transparent',
+                color: activeTab === tab.id ? '#1a1a1e' : '#6B7280',
+                transition: 'all 0.15s, transform 0.15s',
+                boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 overflow-y-auto px-8 pb-8 pt-6 space-y-6">
-        {activeTab === 'settings' && (
+      <div
+        className="scrollbar-hide"
+        style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px', minHeight: 0 }}
+      >
+        {activeTab === 'general' && (
           <>
             {/* AI Provider */}
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold">AI Provider</h2>
-              <div className="flex gap-2">
-                {['anthropic', 'openai'].map((p) => (
+            <Card>
+              <CardHeader
+                title="AI Provider"
+                description="Choose your AI backend"
+                indicator={config.hasProviderKey ? 'green' : 'gray'}
+              />
+              <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+                {(['anthropic', 'openai'] as const).map((p) => (
                   <button
                     key={p}
                     onClick={() => handleProviderChange(p)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      provider === p
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-[var(--surface-bg)] border border-[var(--border-light)] hover:bg-[var(--surface-hover)]'
-                    }`}
+                    style={{
+                      padding: '6px 20px',
+                      borderRadius: 8,
+                      border: provider === p ? '1px solid #FFA100' : '1px solid #E8E8EC',
+                      background: provider === p ? 'rgba(255,161,0,0.08)' : '#fff',
+                      color: provider === p ? '#FFA100' : '#6B7280',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s, transform 0.15s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
                   >
                     {p === 'anthropic' ? 'Anthropic' : 'OpenAI'}
                   </button>
                 ))}
               </div>
-              <ApiKeyInput
-                label={provider === 'anthropic' ? 'Anthropic API Key' : 'OpenAI API Key'}
-                value={providerKey}
-                onChange={setProviderKey}
-                onSave={handleSaveProviderKey}
-                onTest={handleTestProviderKey}
-                onClear={handleClearProviderKey}
-                hasKey={config.hasProviderKey}
-                testResult={testResult}
-                testing={testing}
-              />
-            </div>
 
-            {/* ElevenLabs TTS */}
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold">ElevenLabs TTS</h2>
-              <p className="text-xs text-[var(--text-secondary)]">
-                Text-to-speech for continuous narration. Get a key at elevenlabs.io
-              </p>
-              <ApiKeyInput
-                label="ElevenLabs API Key"
-                value={elevenLabsKey}
-                onChange={setElevenLabsKey}
-                onSave={handleSaveElevenLabsKey}
-                onClear={() => { ipc.invoke('sightline:set-elevenlabs-key', ''); loadConfig(); }}
-                hasKey={config.hasElevenLabsKey}
-              />
-            </div>
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: 'block', fontSize: 12, color: '#6B7280', marginBottom: 6 }}>
+                  {provider === 'anthropic' ? 'Anthropic API Key' : 'OpenAI API Key'}
+                </label>
+                <KeyInput
+                  value={providerKey}
+                  onChange={setProviderKey}
+                  placeholder={config.hasProviderKey ? 'Key configured (hidden)' : 'Enter API key...'}
+                />
+              </div>
 
-            {/* Whisper STT */}
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold">OpenAI Whisper (Speech-to-Text)</h2>
-              <p className="text-xs text-[var(--text-secondary)]">
-                Transcribes your voice commands. Uses OpenAI API.
-              </p>
-              <ApiKeyInput
-                label="OpenAI API Key (for Whisper)"
-                value={whisperKey}
-                onChange={setWhisperKey}
-                onSave={handleSaveWhisperKey}
-                onClear={() => { ipc.invoke('sightline:set-whisper-key', ''); loadConfig(); }}
-                hasKey={config.hasWhisperKey}
-              />
-            </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <PrimaryButton onClick={handleSaveProviderKey} disabled={!providerKey}>
+                  Save
+                </PrimaryButton>
+                <SecondaryButton onClick={handleTestProviderKey} disabled={!providerKey || testing}>
+                  {testing ? 'Testing...' : 'Test'}
+                </SecondaryButton>
+                {config.hasProviderKey && (
+                  <SecondaryButton onClick={handleClearProviderKey} danger>
+                    Clear
+                  </SecondaryButton>
+                )}
+                {testResult !== null && (
+                  <span style={{ fontSize: 12, color: testResult ? '#16A34A' : '#DC2626', marginLeft: 4 }}>
+                    {testResult ? 'Valid' : 'Invalid'}
+                  </span>
+                )}
+              </div>
+            </Card>
 
-            {/* Usage Instructions */}
-            <div className="p-4 rounded-xl bg-[var(--surface-bg)] border border-[var(--border-light)] space-y-2">
-              <h2 className="text-sm font-semibold">How to Use</h2>
-              <ul className="text-xs text-[var(--text-secondary)] space-y-1 list-disc list-inside">
-                <li>Hold <kbd className="px-1.5 py-0.5 rounded bg-[var(--surface-hover)] text-[var(--text-primary)] font-mono">Right Option</kbd> to speak a command</li>
-                <li>Release to send your command</li>
-                <li>Say "cancel" to stop the current action</li>
-                <li>Try: "Open google.com", "What's on this page?", "Search for..."</li>
-              </ul>
-            </div>
+            {/* Voice Settings */}
+            <Card>
+              <CardHeader title="Voice" description="Configure speech services" />
+
+              {/* TTS */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: '#1a1a1e' }}>Text-to-Speech</span>
+                  <span style={{ fontSize: 11, color: '#6B7280' }}>ElevenLabs</span>
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: config.hasElevenLabsKey ? '#22C55E' : '#D1D5DB',
+                      marginLeft: 'auto',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <KeyInput
+                      value={elevenLabsKey}
+                      onChange={setElevenLabsKey}
+                      placeholder={config.hasElevenLabsKey ? 'Key configured' : 'Enter ElevenLabs key...'}
+                    />
+                  </div>
+                  <PrimaryButton onClick={handleSaveElevenLabsKey} disabled={!elevenLabsKey}>
+                    Save
+                  </PrimaryButton>
+                </div>
+              </div>
+
+              <div style={{ height: 1, background: '#E8E8EC', margin: '0 0 16px' }} />
+
+              {/* STT */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: '#1a1a1e' }}>Speech-to-Text</span>
+                  <span style={{ fontSize: 11, color: '#6B7280' }}>OpenAI Whisper</span>
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: config.hasWhisperKey ? '#22C55E' : '#D1D5DB',
+                      marginLeft: 'auto',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <KeyInput
+                      value={whisperKey}
+                      onChange={setWhisperKey}
+                      placeholder={config.hasWhisperKey ? 'Key configured' : 'Enter OpenAI key...'}
+                    />
+                  </div>
+                  <PrimaryButton onClick={handleSaveWhisperKey} disabled={!whisperKey}>
+                    Save
+                  </PrimaryButton>
+                </div>
+              </div>
+            </Card>
+
+            {/* Getting Started */}
+            <Card style={{ background: 'rgba(255,161,0,0.04)', borderColor: 'rgba(255,161,0,0.15)' }}>
+              <CardHeader title="Getting Started" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[
+                  { num: '1', text: 'Hold Right Option to speak a command' },
+                  { num: '2', text: 'Release to send your command' },
+                  { num: '3', text: 'Say "cancel" to stop the current action' },
+                ].map((step) => (
+                  <div key={step.num} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: '50%',
+                        background: 'rgba(255,161,0,0.12)',
+                        color: '#FFA100',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {step.num}
+                    </span>
+                    <span style={{ fontSize: 13, color: '#1a1a1e' }}>{step.text}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
           </>
         )}
 
-        {activeTab === 'openclaw' && (
+        {activeTab === 'engine' && (
           <>
-            {/* Gateway Status */}
-            <div className="p-4 rounded-xl bg-[var(--surface-bg)] border border-[var(--border-light)] space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <StatusDot status={gatewayStatus} />
-                  <div>
-                    <p className="text-sm font-medium">OpenClaw Gateway</p>
-                    <p className="text-xs text-[var(--text-secondary)]">
-                      {gatewayStatus === 'ready' ? 'Running - Playwright enabled' :
-                       gatewayStatus === 'starting' ? 'Starting...' :
-                       gatewayStatus === 'error' ? 'Error - check API key' :
-                       'Stopped'}
-                    </p>
-                  </div>
+            {/* Engine Status */}
+            <Card>
+              <CardHeader title="Engine Status" />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <StatusBadge status={gatewayStatus} />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <SecondaryButton onClick={handleRestartGateway}>Restart</SecondaryButton>
+                  {gatewayStatus === 'ready' && dashboardUrl && (
+                    <PrimaryButton onClick={() => ipc.invoke('sightline:open-external', dashboardUrl)}>
+                      Dashboard
+                    </PrimaryButton>
+                  )}
                 </div>
-                <button
-                  onClick={handleRestartGateway}
-                  className="no-drag px-3 py-1.5 rounded-lg bg-[var(--surface-hover)] text-xs hover:bg-[var(--border-light)] transition-colors"
-                >
-                  Restart
-                </button>
               </div>
-              {gatewayStatus === 'ready' && dashboardUrl && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => ipc.invoke('sightline:open-external', dashboardUrl)}
-                    className="no-drag px-3 py-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-xs text-blue-400 hover:bg-blue-600/30 transition-colors"
-                  >
-                    Open Gateway Dashboard
-                  </button>
-                  <span className="text-xs text-[var(--text-secondary)]">
-                    View sessions, logs & manage skills
-                  </span>
-                </div>
-              )}
               {gatewayStatus === 'error' && gatewayMessage && (
-                <p className="text-xs text-red-400">{gatewayMessage}</p>
+                <p style={{ fontSize: 12, color: '#DC2626', margin: 0 }}>{gatewayMessage}</p>
               )}
               {gatewayStatus === 'stopped' && (
-                <p className="text-xs text-[var(--text-secondary)]">
-                  Set an AI provider API key in the Settings tab to start the gateway.
+                <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>
+                  Configure an AI provider key in General to start the engine.
                 </p>
               )}
-            </div>
+            </Card>
 
-            {/* Browser Control */}
-            <div className="p-4 rounded-xl bg-[var(--surface-bg)] border border-[var(--border-light)] space-y-3">
-              <div className="flex items-center justify-between">
+            {/* Browser Automation */}
+            <Card>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <h2 className="text-sm font-semibold">Allow Browser Automation</h2>
-                  <p className="text-xs text-[var(--text-secondary)] mt-1">
-                    Enable Playwright to control web browsers
+                  <h3 style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1e', margin: 0 }}>Browser Automation</h3>
+                  <p style={{ fontSize: 12, color: '#6B7280', margin: '4px 0 0 0' }}>
+                    Allow Playwright to control web browsers
                   </p>
                 </div>
                 <ToggleSwitch enabled={browserAutomation} onChange={handleBrowserAutomationChange} />
               </div>
-            </div>
+            </Card>
 
             {/* Skills */}
-            <div className="p-4 rounded-xl bg-[var(--surface-bg)] border border-[var(--border-light)] space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold">Skills</h2>
-                <button
-                  onClick={loadOpenClawData}
-                  className="no-drag px-3 py-1.5 rounded-lg bg-[var(--surface-hover)] text-xs hover:bg-[var(--border-light)] transition-colors"
-                >
-                  Refresh
-                </button>
-              </div>
+            <Card>
+              <CardHeader
+                title="Skills"
+                right={
+                  <SecondaryButton onClick={loadOpenClawData}>Refresh</SecondaryButton>
+                }
+              />
               {skills.length === 0 ? (
-                <p className="text-xs text-[var(--text-secondary)]">
+                <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>
                   No skills found. Run bundle-openclaw to install.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {skills.map((skill) => (
-                    <div key={skill.id} className="flex items-center justify-between py-1.5">
-                      <span className="text-sm">{skill.name}</span>
+                    <div
+                      key={skill.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 0',
+                        borderBottom: '1px solid #F0F0F2',
+                      }}
+                    >
+                      <span style={{ fontSize: 13, color: '#1a1a1e' }}>{skill.name}</span>
                       <ToggleSwitch
                         enabled={skill.enabled}
                         onChange={(enabled) => handleSkillToggle(skill.id, enabled)}
@@ -424,42 +702,78 @@ export default function ConfigWindow() {
                   ))}
                 </div>
               )}
-            </div>
+            </Card>
 
-            {/* Paths */}
-            <div className="p-4 rounded-xl bg-[var(--surface-bg)] border border-[var(--border-light)] space-y-3">
+            {/* Advanced */}
+            <Card>
               <button
-                onClick={() => setPathsExpanded(!pathsExpanded)}
-                className="flex items-center gap-2 w-full text-left"
+                onClick={() => setAdvancedExpanded(!advancedExpanded)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  width: '100%',
+                  textAlign: 'left',
+                }}
               >
-                <span className={`text-xs text-[var(--text-secondary)] transition-transform ${pathsExpanded ? 'rotate-90' : ''}`}>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: '#6B7280',
+                    transition: 'transform 0.2s',
+                    transform: advancedExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                    display: 'inline-block',
+                  }}
+                >
                   &#9654;
                 </span>
-                <h2 className="text-sm font-semibold">Paths</h2>
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1e', margin: 0 }}>Advanced</h3>
               </button>
-              {pathsExpanded && paths && (
-                <div className="space-y-2 pl-5">
+              {advancedExpanded && paths && (
+                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 18 }}>
                   <div>
-                    <p className="text-xs text-[var(--text-secondary)]">Config file</p>
+                    <p style={{ fontSize: 11, color: '#6B7280', margin: '0 0 2px 0' }}>Config directory</p>
                     <button
                       onClick={() => ipc.invoke('sightline:open-external', `file://${paths.configDir}`)}
-                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors break-all text-left"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        color: '#FFA100',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        wordBreak: 'break-all',
+                      }}
                     >
                       {paths.configDir}
                     </button>
                   </div>
                   <div>
-                    <p className="text-xs text-[var(--text-secondary)]">OpenClaw directory</p>
+                    <p style={{ fontSize: 11, color: '#6B7280', margin: '0 0 2px 0' }}>OpenClaw directory</p>
                     <button
                       onClick={() => ipc.invoke('sightline:open-external', `file://${paths.openclawDir}`)}
-                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors break-all text-left"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        color: '#FFA100',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        wordBreak: 'break-all',
+                      }}
                     >
                       {paths.openclawDir}
                     </button>
                   </div>
                 </div>
               )}
-            </div>
+            </Card>
           </>
         )}
       </div>
