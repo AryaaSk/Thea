@@ -9,6 +9,12 @@ Rules:
 - If the task completed successfully, say what was done in one sentence.
 - If the assistant lists options or results, mention the top 2-3 items only.
 - Never use markdown, bullet points, URLs, code, or special characters.
+- Write all currency as spoken words (e.g. "1 pound" not "£1", "5 dollars" not "$5").
+- Write small numbers as spoken words (e.g. "three" not "3"). Digits are fine for large numbers.
+- Never use symbols like &, %, @, # — write them as words ("and", "percent", "at", "number").
+- Never use abbreviations — write "for example" not "e.g.", "that is" not "i.e.".
+- Spell out filenames, extensions, and technical terms letter by letter with spaces (e.g. "a b c dot t x t" not "abc.txt", "h t m l" not "HTML").
+- Spell out URLs and paths letter by letter with spaces (e.g. "g o o g l e dot c o m" not "google.com").
 - Write in natural spoken English for text-to-speech.
 - Do not add filler like "Sure!" or "Here's a summary".`;
 

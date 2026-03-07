@@ -57,6 +57,44 @@ const GLASS_BLUR = 'blur(40px) saturate(180%)';
 
 // ── Main Component ──
 
+/** Convert markdown-ish assistant text into React elements */
+function formatMessage(text: string) {
+  // Split into paragraphs on double newline or " - " separators (common in LLM output)
+  const paragraphs = text
+    .replace(/ - /g, '\n')
+    .split(/\n{2,}|\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  return paragraphs.map((para, i) => {
+    // Convert **bold** to <strong>
+    const parts: (string | JSX.Element)[] = [];
+    const boldRegex = /\*\*(.*?)\*\*/g;
+    let lastIdx = 0;
+    let match;
+    while ((match = boldRegex.exec(para)) !== null) {
+      if (match.index > lastIdx) {
+        parts.push(para.slice(lastIdx, match.index));
+      }
+      parts.push(
+        <strong key={`b-${i}-${match.index}`} style={{ color: '#FFFFFF', fontWeight: 600 }}>
+          {match[1]}
+        </strong>,
+      );
+      lastIdx = boldRegex.lastIndex;
+    }
+    if (lastIdx < para.length) {
+      parts.push(para.slice(lastIdx));
+    }
+
+    return (
+      <div key={i} style={{ marginBottom: i < paragraphs.length - 1 ? '6px' : 0 }}>
+        {parts}
+      </div>
+    );
+  });
+}
+
 export default function SightlineBarWindow() {
   // UI state
   const [expanded, setExpanded] = useState(false);
@@ -353,8 +391,109 @@ export default function SightlineBarWindow() {
       {/* ── Transparent gap ── */}
       {expanded && <div style={{ height: 8, flexShrink: 0 }} />}
 
-      {/* ── Expanded Panel (white base) ── */}
-      {expanded && (
+      {/* Messages area */}
+      <div
+        className="flex-1 overflow-y-auto"
+        style={{
+          padding: '8px 16px',
+          minHeight: 0,
+        }}
+      >
+        {messages.length === 0 && !streamingText && state === 'listening' && (
+          <p
+            style={{
+              fontSize: '12px',
+              color: '#6B7280',
+              textAlign: 'center',
+              marginTop: '16px',
+            }}
+          >
+            Listening... speak your command
+          </p>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {messages.map((msg, i) => {
+            if (msg.role === 'tool') {
+              return (
+                <div
+                  key={i}
+                  style={{
+                    fontSize: '11px',
+                    lineHeight: '1.4',
+                    color: '#6B7280',
+                    padding: '3px 8px',
+                    borderLeft: '2px solid rgba(107, 114, 128, 0.3)',
+                    marginLeft: '4px',
+                  }}
+                >
+                  {msg.text}
+                </div>
+              );
+            }
+
+            if (msg.role === 'user') {
+              return (
+                <div
+                  key={i}
+                  style={{
+                    fontSize: '12px',
+                    lineHeight: '1.5',
+                    color: '#93C5FD',
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                    border: '1px solid rgba(96, 165, 250, 0.15)',
+                    marginTop: i > 0 ? '4px' : 0,
+                  }}
+                >
+                  <span style={{ color: '#60A5FA', fontWeight: 600, fontSize: '11px', textTransform: 'uppercase' as const, letterSpacing: '0.5px' }}>You</span>
+                  <div style={{ marginTop: '2px' }}>{msg.text}</div>
+                </div>
+              );
+            }
+
+            // Assistant message
+            return (
+              <div
+                key={i}
+                style={{
+                  fontSize: '12px',
+                  lineHeight: '1.6',
+                  color: msg.isError ? '#F87171' : '#E5E7EB',
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  backgroundColor: msg.isError ? 'rgba(248, 113, 113, 0.08)' : 'rgba(255, 255, 255, 0.04)',
+                  border: msg.isError ? '1px solid rgba(248, 113, 113, 0.2)' : '1px solid rgba(255, 255, 255, 0.06)',
+                  marginTop: i > 0 ? '4px' : 0,
+                }}
+              >
+                {formatMessage(msg.text)}
+              </div>
+            );
+          })}
+          {/* Live streaming text from assistant (grows as deltas arrive) */}
+          {streamingText && (
+            <div
+              style={{
+                fontSize: '12px',
+                lineHeight: '1.6',
+                color: '#E5E7EB',
+                opacity: 0.7,
+                padding: '6px 10px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.06)',
+              }}
+            >
+              {formatMessage(streamingText)}
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      {/* Chat input area */}
+      {showInput && (
         <div
           style={{
             display: 'flex',
