@@ -243,10 +243,12 @@ section {
 }
 
 .nav-logo img {
-  height: 28px;
+  height: 44px;
   width: auto;
   filter: brightness(0);
   display: block;
+  margin: -14px 0 -10px;
+  object-fit: contain;
 }
 
 .nav-logo span {
@@ -1239,48 +1241,138 @@ section {
   align-items: center;
 }
 
-.what-mock-page {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+/* Mock screen for "What can I do" */
+.what-screen {
+  background: #111118;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  padding: 32px;
+  overflow: hidden;
   position: relative;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.15);
 }
 
-.what-mock-page.what-mock-dark {
-  background: #1a1a2e;
-  border-color: #2a2a3e;
+.what-screen-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.mock-bar {
-  height: 10px;
-  border-radius: 5px;
-  background: rgba(200, 155, 60, 0.08);
-  margin-bottom: 14px;
+.what-screen-dots { display: flex; gap: 6px; }
+.what-screen-dots span { width: 10px; height: 10px; border-radius: 50%; }
+.what-screen-dot--red { background: #ff5f57; }
+.what-screen-dot--yellow { background: #febc2e; }
+.what-screen-dot--green { background: #28c840; }
+
+.what-screen-url {
+  flex: 1;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
 }
 
-.what-mock-dark .mock-bar {
-  background: rgba(255, 255, 255, 0.08);
+.what-screen-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 300px;
+  position: relative;
+  overflow: hidden;
 }
 
-.mock-highlight {
+.what-mock-nav { display: flex; gap: 8px; }
+.what-mock-nav-item { height: 10px; width: 60px; background: rgba(255,255,255,0.06); border-radius: 4px; }
+.what-mock-nav-item:nth-child(2) { width: 45px; }
+.what-mock-nav-item:nth-child(3) { width: 50px; }
+
+.what-mock-hero { height: 60px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.04); }
+
+.what-mock-cols { display: flex; gap: 12px; }
+.what-mock-sidebar { width: 30%; display: flex; flex-direction: column; gap: 8px; }
+.what-mock-sidebar-item { height: 10px; background: rgba(255,255,255,0.05); border-radius: 4px; }
+.what-mock-sidebar-item:nth-child(1) { width: 80%; }
+.what-mock-sidebar-item:nth-child(2) { width: 65%; }
+.what-mock-sidebar-item:nth-child(3) { width: 90%; }
+.what-mock-sidebar-item:nth-child(4) { width: 50%; }
+
+.what-mock-main { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.what-mock-card { height: 44px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
+
+.what-mock-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.what-mock-btn { height: 28px; width: 70px; background: rgba(255,255,255,0.05); border-radius: 6px; border: 1px solid rgba(255,255,255,0.06); }
+.what-mock-btn--gold { background: rgba(200,155,60,0.15); border-color: rgba(200,155,60,0.3); }
+
+.what-scan-line {
   position: absolute;
-  top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
-  border-radius: 12px;
-  background: radial-gradient(ellipse at 50% 40%, rgba(200, 155, 60, 0.06) 0%, transparent 60%);
-  pointer-events: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(200,155,60,0.6) 50%, transparent 100%);
+  box-shadow: 0 0 20px rgba(200,155,60,0.3), 0 0 60px rgba(200,155,60,0.1);
+  animation: whatScanMove 4s ease-in-out infinite;
+  z-index: 2;
 }
 
-.mock-bar:nth-child(1) { width: 60%; }
-.mock-bar:nth-child(2) { width: 85%; }
-.mock-bar:nth-child(3) { width: 45%; height: 40px; border-radius: 8px; }
-.mock-bar:nth-child(4) { width: 100%; height: 80px; border-radius: 8px; margin-bottom: 14px; }
-.mock-bar:nth-child(5) { width: 70%; }
-.mock-bar:nth-child(6) { width: 90%; }
-.mock-bar:nth-child(7) { width: 50%; height: 36px; border-radius: 8px; }
+@keyframes whatScanMove {
+  0% { top: 10%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 90%; opacity: 0; }
+}
+
+.what-thea-badge {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  background: rgba(200,155,60,0.1);
+  border: 1px solid rgba(200,155,60,0.25);
+  border-radius: 100px;
+  z-index: 3;
+}
+
+.what-thea-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  animation: whatPulse 2s ease-in-out infinite;
+}
+
+@keyframes whatPulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.what-thea-badge span {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-gold);
+}
+
+.what-speech {
+  position: absolute;
+  bottom: 48px;
+  right: 14px;
+  max-width: 220px;
+  padding: 10px 14px;
+  background: rgba(200,155,60,0.12);
+  border: 1px solid rgba(200,155,60,0.2);
+  border-radius: 10px 10px 2px 10px;
+  z-index: 3;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--accent-gold);
+  line-height: 1.5;
+}
 
 .what-response {
   background: var(--bg-card);

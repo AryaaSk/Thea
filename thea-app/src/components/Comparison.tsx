@@ -23,6 +23,11 @@ const rows = [
     thea: 'Sees and understands visually',
   },
   {
+    feature: 'Voice Feedback',
+    traditional: 'Robotic, monotone narration',
+    thea: 'Speaks back naturally in conversation',
+  },
+  {
     feature: 'Form Filling',
     traditional: 'Manual tab-through',
     thea: 'Automatic, intelligent',
@@ -79,13 +84,13 @@ export function Comparison() {
         .comp-th-feature {
           color: var(--text-muted);
           background: var(--bg-card);
-          width: 28%;
+          width: 26%;
         }
 
         .comp-th-traditional {
           color: var(--text-secondary);
           background: #f8f8f8;
-          width: 36%;
+          width: 37%;
           border-left: 1px solid var(--border);
         }
 
@@ -93,7 +98,7 @@ export function Comparison() {
           color: var(--accent-gold);
           background: rgba(200, 155, 60, 0.06);
           border-top: 3px solid var(--accent-gold);
-          width: 36%;
+          width: 37%;
           border-left: 1px solid var(--border);
         }
 
@@ -309,7 +314,7 @@ export function Comparison() {
           </div>
 
           {/* Mobile cards */}
-          <div className="comp-cards reveal" ref={tableRef}>
+          <div className="comp-cards">
             {rows.map((row, i) => (
               <div className="comp-card" key={i}>
                 <div className="comp-card-feature">{row.feature}</div>

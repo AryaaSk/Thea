@@ -4,6 +4,7 @@ import { Problem } from './components/Problem';
 import { Features } from './components/Features';
 import { Stats } from './components/Stats';
 import { Comparison } from './components/Comparison';
+import { Founders } from './components/Founders';
 import { HowItWorks } from './components/HowItWorks';
 import { VoiceDemo } from './components/VoiceDemo';
 import { Demo } from './components/Demo';
@@ -36,6 +37,7 @@ function App() {
           <CTA />
         </div>
       </main>
+      <Founders />
       <Footer />
     </>
   );
