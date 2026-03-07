@@ -13,34 +13,34 @@ const rows = [
     thea: 'Start talking immediately',
   },
   {
-    feature: 'App Compatibility',
-    traditional: 'Only accessible apps',
-    thea: 'Any application',
+    feature: 'Web Compatibility',
+    traditional: 'Only ARIA-labelled sites',
+    thea: 'Any website, accessible or not',
   },
   {
     feature: 'Screen Understanding',
-    traditional: 'Reads labels/ARIA tags',
-    thea: 'Sees and understands visually',
+    traditional: 'Reads labels/ARIA tags only',
+    thea: 'Claude AI sees and reasons about the full page',
   },
   {
     feature: 'Voice Feedback',
     traditional: 'Robotic, monotone narration',
-    thea: 'Speaks back naturally in conversation',
+    thea: 'Natural, conversational responses via ElevenLabs',
   },
   {
     feature: 'Form Filling',
-    traditional: 'Manual tab-through',
-    thea: 'Automatic, intelligent',
+    traditional: 'Manual tab-through every field',
+    thea: 'Automatic, intelligent — even on unlabelled forms',
+  },
+  {
+    feature: 'User Control',
+    traditional: 'No safeguards for mistakes',
+    thea: 'Confirms with you before every irreversible action',
   },
   {
     feature: 'Multi-step Tasks',
     traditional: 'Manual, step-by-step',
-    thea: 'Single voice command',
-  },
-  {
-    feature: 'Custom UI Components',
-    traditional: 'Often inaccessible',
-    thea: 'Fully understood',
+    thea: 'Single voice command, narrated throughout',
   },
 ];
 

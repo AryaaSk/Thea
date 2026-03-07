@@ -189,10 +189,10 @@ export function Founders() {
           </div>
 
           <h2 className="team-headline reveal" ref={headlineRef}>
-            Built at Machines of Loving Grace
+            Built with purpose, for real people
           </h2>
           <p className="team-sub reveal" ref={subRef}>
-            We built Thea at the Claude AI Hackathon — Machines of Loving Grace.
+            We built Thea for the 2.2 billion people with vision impairment who deserve independent access to the web. Thea assists — it never decides. Every important action requires your explicit confirmation, and you can cancel at any time. Built at the Claude AI Hackathon: Machines of Loving Grace.
           </p>
 
           <div className="team-grid reveal" ref={gridRef}>

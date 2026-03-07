@@ -20,22 +20,22 @@ export function Problem() {
           <div className="problem-content reveal" ref={textRef}>
             <div className="problem-accent" aria-hidden="true" />
             <h2 className="problem-headline">
-              Billions are locked out<br />
-              <span className="problem-headline-gold">of their own computers.</span>
+              Blind and low-vision users<br />
+              <span className="problem-headline-gold">are locked out of the web.</span>
             </h2>
 
             <div className="problem-paragraphs">
               <p>
-                Screen readers haven't fundamentally changed in decades. They read elements one by one, left to right, top to bottom — forcing users to build a mental map of every page they visit.
+                Students applying for university. Job seekers filling out applications. People managing their finances or booking a GP appointment. For 2.2 billion people with vision impairment, these everyday tasks are daily battles.
               </p>
               <p>
-                96% of websites are built without accessibility in mind. Unlabeled buttons, missing alt text, custom components that screen readers can't parse — every page is a new obstacle course.
+                Screen readers haven't fundamentally changed in decades. They read elements one by one, left to right — forcing users to memorise the layout of every page. And 96% of websites are still built without accessibility in mind.
               </p>
               <p>
                 The result: blind and low-vision users spend 3&ndash;5× longer on tasks sighted users complete in seconds. Online banking, job applications, healthcare portals — entire workflows become impossible.
               </p>
               <p>
-                AI can now understand web pages, reason about their content, and take action. We built Thea to put that power in the hands of the people who need it most.
+                Claude AI can now understand web pages, reason about their content, and take action. We built Thea to put that power directly in the hands of the people who need it most — while keeping them in full control.
               </p>
             </div>
           </div>

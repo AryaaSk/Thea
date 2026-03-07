@@ -17,7 +17,7 @@ export function CTA() {
           </div>
           <span className="section-tag">GET STARTED</span>
           <h2>The web should work for everyone</h2>
-          <p>Join the movement to make every website accessible to every person — regardless of how they see.</p>
+          <p>2.2 billion people are waiting for the web to catch up. Thea doesn't replace their agency — it restores it. Join us in making every website accessible to every person, regardless of how they see.</p>
           <div className="cta-buttons">
             <a href="#" className="btn-primary">Get Early Access</a>
             <a href="#" className="cta-github" aria-label="View Thea on GitHub">

@@ -92,8 +92,8 @@ const features: FeatureData[] = [
   },
   {
     delay: 160,
-    title: 'Safe Confirmation',
-    desc: 'Deleting files, sending payments, or submitting forms \u2014 Thea always asks before taking irreversible actions.',
+    title: 'You Stay in Control',
+    desc: 'Thea executes your intent \u2014 it never acts alone on irreversible tasks. Payments, form submissions, account changes always require your explicit confirmation first.',
     icon: (
       <svg className="feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M24 4L6 14v12c0 11 8 18 18 22 10-4 18-11 18-22V14L24 4z" />
@@ -110,7 +110,7 @@ export function Features() {
         <SectionHeader
           tag="FEATURES"
           label="Everything you need, nothing you can't reach"
-          sub="Six capabilities that give blind and low-vision users complete, independent access to the web."
+          sub="Six capabilities that give blind and low-vision users complete, independent access to the web — powered by Claude AI, with you in control."
         />
         <div className="features-grid">
           {features.map((f, i) => (
