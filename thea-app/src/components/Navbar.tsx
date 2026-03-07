@@ -23,14 +23,14 @@ export function Navbar() {
     <nav className={`nav${scrolled ? ' scrolled' : ''}`} role="navigation" aria-label="Main navigation">
       <div className="nav-inner">
         <a href="#" className="nav-logo" aria-label="Thea home">
-          <img src="/logo-thea.png" alt="Thea logo" />
+          <img src="/logo-thea-cropped.png" alt="Thea logo" />
         </a>
         <ul className={`nav-links${menuOpen ? ' open' : ''}`} role="list">
           <li><a href="#features" onClick={closeMenu}>Features</a></li>
           <li><a href="#how-it-works" onClick={closeMenu}>How It Works</a></li>
           <li><a href="#demo" onClick={closeMenu}>Demo</a></li>
-          <li><a href="#" className="nav-cta" role="button" onClick={closeMenu}>Get Early Access</a></li>
         </ul>
+        <a href="#" className="nav-cta" role="button">Get Early Access</a>
         <button
           className={`hamburger${menuOpen ? ' active' : ''}`}
           aria-label="Toggle navigation menu"

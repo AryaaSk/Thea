@@ -43,20 +43,11 @@ export function Hero() {
           ref={logoRef}
         />
         <p className="hero-tagline reveal" ref={taglineRef}>
-          Your AI assistant for using any computer &mdash; entirely by voice.
+          Full computer access for blind and low-vision users &mdash; just by talking.
         </p>
 
         <div className="hero-glass reveal" ref={glassRef}>
           <div className="hero-glass-inner">
-            <p className="hero-sub">
-              Thea gives blind and low-vision users complete control of their computer. Browse the web, manage files, write documents, and navigate any app &mdash; all through natural conversation.
-            </p>
-
-            <div className="hero-ctas">
-              <a href="#demo" className="btn-primary">Watch Demo</a>
-              <a href="#features" className="btn-outline">Learn More</a>
-            </div>
-
             <div className="mini-convo">
               <div className="mini-msg mini-msg-user">
                 <span className="mini-msg-label">You</span>
@@ -64,8 +55,13 @@ export function Hero() {
               </div>
               <div className="mini-msg mini-msg-agent">
                 <span className="mini-msg-label">Thea</span>
-                "You have a new email from Sarah: 'Meeting moved to 3pm tomorrow.' Would you like to reply?"
+                Opening Gmail… You have one new message from Dr. Patel about your appointment tomorrow at 2 PM.
               </div>
+            </div>
+
+            <div className="hero-ctas">
+              <a href="#demo" className="btn-primary">Watch Demo</a>
+              <a href="#features" className="btn-outline">Learn More</a>
             </div>
           </div>
         </div>
