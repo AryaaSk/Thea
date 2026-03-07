@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import Grainient from './Grainient/Grainient';
 
@@ -6,14 +5,6 @@ export function Hero() {
   const logoRef = useScrollReveal<HTMLImageElement>(0);
   const taglineRef = useScrollReveal<HTMLParagraphElement>(150);
   const glassRef = useScrollReveal<HTMLDivElement>(300);
-
-  const bars = useMemo(() => {
-    return Array.from({ length: 32 }, (_, i) => ({
-      maxH: 12 + Math.random() * 44,
-      delay: i * 0.06,
-      duration: 0.8 + Math.random() * 0.8,
-    }));
-  }, []);
 
   return (
     <section className="hero" aria-label="Introduction">
@@ -66,20 +57,6 @@ export function Hero() {
               <a href="#features" className="btn-outline">Learn More</a>
             </div>
 
-            <div className="waveform" aria-hidden="true">
-              {bars.map((bar, i) => (
-                <div
-                  key={i}
-                  className="waveform-bar"
-                  style={{
-                    '--bar-h': `${bar.maxH}px`,
-                    animationDelay: `${bar.delay}s`,
-                    animationDuration: `${bar.duration}s`,
-                  } as React.CSSProperties}
-                />
-              ))}
-            </div>
-
             <div className="mini-convo">
               <div className="mini-msg mini-msg-user">
                 <span className="mini-msg-label">You</span>
@@ -91,6 +68,15 @@ export function Hero() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="hero-scroll-hint" aria-hidden="true">
+        <span>Scroll</span>
+        <div className="scroll-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M12 5v14M5 12l7 7 7-7" />
+          </svg>
         </div>
       </div>
     </section>

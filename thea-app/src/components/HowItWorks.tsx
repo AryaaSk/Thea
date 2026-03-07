@@ -4,6 +4,7 @@ import { SectionHeader } from './SectionHeader';
 const steps = [
   {
     label: 'You speak',
+    desc: 'Just say what you need \u2014 no menus, no buttons',
     icon: (
       <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <rect x="9" y="3" width="10" height="15" rx="5" />
@@ -14,6 +15,7 @@ const steps = [
   },
   {
     label: 'Thea listens',
+    desc: 'Your words are captured instantly',
     icon: (
       <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <path d="M3 20h3l2-6 3 10 3-14 3 10 2-4h6" />
@@ -22,6 +24,7 @@ const steps = [
   },
   {
     label: 'AI understands',
+    desc: 'Claude figures out exactly what you mean',
     icon: (
       <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <circle cx="14" cy="14" r="10" />
@@ -32,6 +35,7 @@ const steps = [
   },
   {
     label: 'Reads your screen',
+    desc: 'Thea sees everything on your display',
     icon: (
       <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <rect x="3" y="3" width="22" height="22" rx="3" />
@@ -42,6 +46,7 @@ const steps = [
   },
   {
     label: 'Takes action',
+    desc: 'Clicks, types, and navigates for you',
     icon: (
       <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <rect x="3" y="5" width="22" height="18" rx="2" />
@@ -53,6 +58,7 @@ const steps = [
   },
   {
     label: 'Speaks back',
+    desc: 'You hear the results read aloud',
     icon: (
       <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
         <path d="M14 3v5" />
@@ -82,6 +88,7 @@ export function HowItWorks() {
                 {step.icon}
               </div>
               <span>{step.label}</span>
+              <p className="pipeline-desc">{step.desc}</p>
             </div>
           ))}
         </div>

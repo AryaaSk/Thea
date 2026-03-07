@@ -101,22 +101,6 @@ const features: FeatureData[] = [
       </svg>
     ),
   },
-  {
-    delay: 0,
-    title: 'App Compatibility',
-    desc: 'Works across browsers, native apps, documents, and system settings. If it\u2019s on your screen, Thea can interact with it.',
-    icon: (
-      <svg className="feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <rect x="4" y="8" width="40" height="28" rx="3" />
-        <line x1="4" y1="16" x2="44" y2="16" />
-        <circle cx="10" cy="12" r="1.5" fill="currentColor" />
-        <circle cx="16" cy="12" r="1.5" fill="currentColor" />
-        <circle cx="22" cy="12" r="1.5" fill="currentColor" />
-        <line x1="16" y1="40" x2="32" y2="40" />
-        <line x1="24" y1="36" x2="24" y2="40" />
-      </svg>
-    ),
-  },
 ];
 
 export function Features() {
@@ -126,7 +110,7 @@ export function Features() {
         <SectionHeader
           tag="FEATURES"
           label="Everything you need, nothing you can't reach"
-          sub="Seven capabilities that give blind and low-vision users complete control of their computer."
+          sub="Six capabilities that give blind and low-vision users complete control of their computer."
         />
         <div className="features-grid">
           {features.map((f, i) => (

@@ -16,7 +16,7 @@ export function WhatCanIDo() {
         />
 
         <div className="what-layout">
-          <div className="what-mock-page reveal" ref={mockRef} aria-hidden="true">
+          <div className="what-mock-page what-mock-dark reveal" ref={mockRef} aria-hidden="true">
             <div className="mock-bar"></div>
             <div className="mock-bar"></div>
             <div className="mock-bar"></div>
