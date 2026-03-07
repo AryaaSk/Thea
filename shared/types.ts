@@ -11,9 +11,10 @@ export interface AutomationStep {
 }
 
 export interface ChatMessage {
-  role: 'assistant' | 'user';
+  role: 'assistant' | 'user' | 'tool';
   text: string;
   isError?: boolean;
+  isStreaming?: boolean;
 }
 
 export interface SightlineConfig {

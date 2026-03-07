@@ -39,7 +39,7 @@ class OpenClawClient {
   private currentSteps: AutomationStep[] = [];
   private runResolve: (() => void) | null = null;
   private deviceIdentity: DeviceIdentity | null = null;
-  private streamingDeltaCount = 0;
+  private lastCumulativeText = '';
   private eventCallbacks: OpenClawEventCallbacks = {};
 
   setEventCallbacks(callbacks: OpenClawEventCallbacks): void {
@@ -210,6 +210,8 @@ class OpenClawClient {
 
     if (!this.runResolve) return;
 
+    console.log('[OpenClawClient] Event:', event, JSON.stringify(data, null, 2));
+
     if (event === 'chat') {
       const state = data.state as string;
       const rawMessage = data.message;
@@ -239,15 +241,26 @@ class OpenClawClient {
               }
             }
             if (textParts.length > 0) {
-              this.streamingDeltaCount++;
-              // Don't broadcast deltas to UI (causes duplication) — only notify TTS callback
-              this.eventCallbacks.onChatDelta?.(textParts.join('\n'));
+              const cumulativeText = textParts.join('\n');
+              // Deltas are cumulative (confirmed from OpenClaw source).
+              // Diff against last seen text to get only the new portion for TTS.
+              const newText = cumulativeText.substring(this.lastCumulativeText.length);
+              this.lastCumulativeText = cumulativeText;
+              if (newText) {
+                this.eventCallbacks.onChatDelta?.(newText);
+              }
+              // Broadcast streaming text to the panel so user sees it live
+              windowManager.broadcastToAll('sightline:chat', {
+                role: 'assistant',
+                text: cumulativeText,
+                isStreaming: true,
+              });
             }
           }
         }
       } else if (state === 'final') {
         console.log('[OpenClawClient] Agent done');
-        // Extract final complete message and broadcast once to UI
+        // Final event contains the complete message (confirmed from OpenClaw source)
         if (typeof rawMessage === 'object' && rawMessage !== null) {
           const msg = rawMessage as Record<string, unknown>;
           const content = msg.content;
@@ -267,14 +280,14 @@ class OpenClawClient {
             }
           }
         }
-        this.streamingDeltaCount = 0;
+        this.lastCumulativeText = '';
         this.eventCallbacks.onChatFinal?.();
         if (this.runResolve) {
           this.runResolve();
           this.runResolve = null;
         }
       } else if (state === 'aborted') {
-        this.streamingDeltaCount = 0;
+        this.lastCumulativeText = '';
         if (this.runResolve) {
           this.runResolve();
           this.runResolve = null;
@@ -283,7 +296,7 @@ class OpenClawClient {
         const errorMsg = (data.errorMessage as string) || 'unknown error';
         windowManager.broadcastToAll('sightline:chat', { role: 'assistant', text: errorMsg, isError: true });
         this.eventCallbacks.onChatError?.(errorMsg);
-        this.streamingDeltaCount = 0;
+        this.lastCumulativeText = '';
         if (this.runResolve) {
           this.runResolve();
           this.runResolve = null;
@@ -342,7 +355,7 @@ class OpenClawClient {
     }
 
     this.currentSteps = [];
-    this.streamingDeltaCount = 0;
+    this.lastCumulativeText = '';
 
     // Show only the clean user instruction in the bar (no system prompt)
     windowManager.broadcastToAll('sightline:chat', { role: 'user', text: displayInstruction });

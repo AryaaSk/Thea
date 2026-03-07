@@ -3,15 +3,16 @@ import { windowManager } from '../windowManager.js';
 import { openclawClient } from '../services/openclawClient.js';
 import { whisperService } from '../services/whisperService.js';
 import { ttsService } from '../services/ttsService.js';
+import { summarizerService } from '../services/summarizerService.js';
 import { openclawManager, SIGHTLINE_SYSTEM_PROMPT } from './openclawManager.js';
 import { apiKeyManager } from './apiKeyManager.js';
 import type { SightlineState } from '../../../shared/types.js';
 
 class SessionManager {
   private state: SightlineState = 'idle';
-  private sentenceBuffer = '';
   private hasSetSystemPrompt = false;
   private lastAssistantMessage = '';
+  private currentInstruction = '';
   private waitTimeout: NodeJS.Timeout | null = null;
 
   initialize(): void {
@@ -23,19 +24,11 @@ class SessionManager {
           ttsService.speak(narration);
         }
       },
-      onChatDelta: (text: string) => {
-        // Buffer text and speak when sentence boundary is detected
-        this.sentenceBuffer += text;
-        this.lastAssistantMessage += text;
-        this.flushSentences();
+      onChatDelta: (newText: string) => {
+        // Accumulate text for summarization on final — no sentence-by-sentence TTS
+        this.lastAssistantMessage += newText;
       },
-      onChatFinal: () => {
-        // Speak any remaining buffered text
-        if (this.sentenceBuffer.trim()) {
-          ttsService.speak(this.sentenceBuffer.trim());
-          this.sentenceBuffer = '';
-        }
-
+      onChatFinal: async () => {
         // Check if the agent is asking a question
         const lastMessage = this.lastAssistantMessage;
         const isQuestion = lastMessage && (
@@ -46,6 +39,27 @@ class SessionManager {
           lastMessage.toLowerCase().includes('please confirm') ||
           lastMessage.toLowerCase().includes('which one')
         );
+
+        // Speak a summary instead of the full response
+        if (lastMessage.trim()) {
+          if (lastMessage.trim().length <= 120) {
+            // Short enough to speak directly
+            ttsService.speak(lastMessage.trim());
+          } else {
+            try {
+              await summarizerService.summarizeStreaming({
+                assistantMessage: lastMessage,
+                userInstruction: this.currentInstruction,
+                onSentence: (sentence) => {
+                  ttsService.speak(sentence);
+                },
+              });
+            } catch (error) {
+              console.error('[SessionManager] Summarization failed:', error);
+              ttsService.speak(this.getFallbackSummary(lastMessage));
+            }
+          }
+        }
 
         if (isQuestion) {
           this.setState('awaiting_response');
@@ -115,7 +129,7 @@ class SessionManager {
     }
 
     this.setState('acting');
-    this.sentenceBuffer = '';
+    this.currentInstruction = instruction;
     this.lastAssistantMessage = '';
 
     // Prepend system prompt on first instruction of the session
@@ -142,6 +156,7 @@ class SessionManager {
     ttsService.stop();
     await openclawClient.abort();
     ttsService.speakImmediate('Cancelled.');
+    windowManager.hideSightlineBar();
     this.setState('idle');
   }
 
@@ -180,22 +195,16 @@ class SessionManager {
     this.setState('idle');
   }
 
-  // Extract complete sentences from buffer and send to TTS
-  private flushSentences(): void {
-    const sentenceEnders = /([.!?]\s)|(\n)/g;
-    let lastIndex = 0;
-    let match;
-
-    while ((match = sentenceEnders.exec(this.sentenceBuffer)) !== null) {
-      const sentence = this.sentenceBuffer.substring(lastIndex, match.index + match[0].length).trim();
-      if (sentence) {
-        ttsService.speak(sentence);
-      }
-      lastIndex = match.index + match[0].length;
+  // Extract first 2 sentences as fallback when summarization fails
+  private getFallbackSummary(text: string): string {
+    const sentences = text.match(/[^.!?]*[.!?]/g);
+    if (sentences && sentences.length >= 2) {
+      return sentences.slice(0, 2).join(' ').trim();
     }
-
-    // Keep the remainder in the buffer
-    this.sentenceBuffer = this.sentenceBuffer.substring(lastIndex);
+    if (sentences && sentences.length === 1) {
+      return sentences[0].trim();
+    }
+    return text.substring(0, 150).trim();
   }
 
   // Generate brief narration for tool calls

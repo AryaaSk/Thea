@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ipc } from '../../lib/ipc';
 import WaveformView from './components/WaveformView';
-import type { SightlineState, ChatMessage, AutomationStep } from '../../../shared/types';
+import type { SightlineState, ChatMessage } from '../../../shared/types';
 
 export default function SightlineBarWindow() {
   const [state, setState] = useState<SightlineState>('idle');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [steps, setSteps] = useState<AutomationStep[]>([]);
+  const [streamingText, setStreamingText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [inputText, setInputText] = useState('');
@@ -22,28 +22,30 @@ export default function SightlineBarWindow() {
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, steps]);
+  }, [messages, streamingText]);
 
   // Subscribe to events from main process
   useEffect(() => {
     const unsubs = [
       ipc.subscribe('sightline:state-changed', (data) => {
         const d = data as { state: SightlineState };
-        // Clear messages when starting a new session (idle -> listening)
-        if (prevStateRef.current === 'idle' && d.state === 'listening') {
-          setMessages([]);
-          setSteps([]);
-        }
         prevStateRef.current = d.state;
         setState(d.state);
       }),
       ipc.subscribe('sightline:chat', (data) => {
         const msg = data as ChatMessage;
-        setMessages((prev) => [...prev, msg]);
+        if (msg.isStreaming) {
+          // Show cumulative streaming text at the bottom (grows as deltas arrive)
+          setStreamingText(msg.text);
+        } else {
+          // Final or regular message: append to messages, clear streaming
+          setStreamingText('');
+          setMessages((prev) => [...prev, msg]);
+        }
       }),
       ipc.subscribe('sightline:step', (data) => {
-        const step = data as AutomationStep;
-        setSteps((prev) => [...prev.slice(-10), step]);
+        const step = data as { details: string };
+        setMessages((prev) => [...prev, { role: 'tool' as const, text: step.details }]);
       }),
     ];
 
@@ -225,10 +227,15 @@ export default function SightlineBarWindow() {
         borderBottomRightRadius: '0px',
       }}
     >
-      {/* Header */}
+      {/* Header — draggable region for moving the panel */}
       <div
         className="flex items-center justify-between px-4 py-2.5 flex-shrink-0"
-        style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}
+        style={{
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          // @ts-expect-error: Electron-specific CSS property for frameless window dragging
+          WebkitAppRegion: 'drag',
+          cursor: 'grab',
+        }}
       >
         <div className="flex items-center gap-2">
           <span
@@ -264,6 +271,8 @@ export default function SightlineBarWindow() {
             color: '#F87171',
             cursor: 'pointer',
             transition: 'background-color 150ms',
+            // @ts-expect-error: Electron-specific CSS property
+            WebkitAppRegion: 'no-drag',
           }}
           onMouseEnter={(e) => {
             (e.target as HTMLButtonElement).style.backgroundColor = 'rgba(239, 68, 68, 0.3)';
@@ -307,7 +316,7 @@ export default function SightlineBarWindow() {
           minHeight: 0,
         }}
       >
-        {messages.length === 0 && state === 'listening' && (
+        {messages.length === 0 && !streamingText && state === 'listening' && (
           <p
             style={{
               fontSize: '12px',
@@ -323,11 +332,20 @@ export default function SightlineBarWindow() {
           {messages.map((msg, i) => (
             <div
               key={i}
-              style={{
-                fontSize: '12px',
-                lineHeight: '1.6',
-                color: msg.isError ? '#F87171' : msg.role === 'user' ? '#93C5FD' : '#E5E7EB',
-              }}
+              style={
+                msg.role === 'tool'
+                  ? {
+                      fontSize: '11px',
+                      lineHeight: '1.5',
+                      color: '#6B7280',
+                      fontStyle: 'italic',
+                    }
+                  : {
+                      fontSize: '12px',
+                      lineHeight: '1.6',
+                      color: msg.isError ? '#F87171' : msg.role === 'user' ? '#93C5FD' : '#E5E7EB',
+                    }
+              }
             >
               {msg.role === 'user' && (
                 <span style={{ color: '#60A5FA', fontWeight: 500 }}>You: </span>
@@ -335,17 +353,17 @@ export default function SightlineBarWindow() {
               {msg.text}
             </div>
           ))}
-
-          {/* Current step indicator */}
-          {steps.length > 0 && state === 'acting' && (
+          {/* Live streaming text from assistant (grows as deltas arrive) */}
+          {streamingText && (
             <div
               style={{
                 fontSize: '12px',
-                color: '#6B7280',
-                fontStyle: 'italic',
+                lineHeight: '1.6',
+                color: '#E5E7EB',
+                opacity: 0.7,
               }}
             >
-              {steps[steps.length - 1].details}
+              {streamingText}
             </div>
           )}
           <div ref={messagesEndRef} />
