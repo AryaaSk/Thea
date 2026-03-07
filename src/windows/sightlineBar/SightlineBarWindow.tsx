@@ -1,15 +1,77 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ipc } from '../../lib/ipc';
 import WaveformView from './components/WaveformView';
-import type { SightlineState, ChatMessage } from '../../../shared/types';
+import type { SightlineState, ChatMessage, AutomationStep } from '../../../shared/types';
+import logoSrc from '../../../logo-thea.png';
+
+// ── Icons ──
+
+const SendIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+    <path d="M22 2L11 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const ChevronUp = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+    <path d="M18 15L12 9L6 15" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const ChevronDown = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+    <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+// ── State color mapping ──
+
+const stateColors: Record<SightlineState, string> = {
+  idle: '',
+  listening: '#22C55E',
+  processing: '#EAB308',
+  acting: '#FFA100',
+  speaking: '#A855F7',
+  awaiting_response: '#F97316',
+};
+
+const stateLabels: Record<SightlineState, string> = {
+  idle: 'Ready',
+  listening: 'Listening...',
+  processing: 'Transcribing...',
+  acting: 'Working...',
+  speaking: 'Speaking...',
+  awaiting_response: 'Waiting...',
+};
+
+const ACCENT = '#FFA100';
+const PILL_BG = 'rgba(255,255,255,0.72)';
+const GLASS_BLUR = 'blur(40px) saturate(180%)';
+
+// ── Main Component ──
 
 export default function SightlineBarWindow() {
+  // UI state
+  const [expanded, setExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState<'assistant' | 'raw'>('assistant');
+  const [inputText, setInputText] = useState('');
+
+  // Core state
   const [state, setState] = useState<SightlineState>('idle');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [steps, setSteps] = useState<AutomationStep[]>([]);
   const [streamingText, setStreamingText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [inputText, setInputText] = useState('');
+
+  // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -18,13 +80,41 @@ export default function SightlineBarWindow() {
   const streamRef = useRef<MediaStream | null>(null);
   const prevStateRef = useRef<SightlineState>('idle');
   const inputRef = useRef<HTMLInputElement>(null);
+  const expandedRef = useRef(expanded);
 
-  // Auto-scroll to bottom on new messages
+  useEffect(() => { expandedRef.current = expanded; }, [expanded]);
+
+  // ── Window resize ──
+
+  const setExpandedState = useCallback(async (next: boolean) => {
+    setExpanded(next);
+    expandedRef.current = next;
+    await window.electron.invoke('window:set-pill-expanded', { expanded: next });
+  }, []);
+
+  const toggleExpanded = useCallback(async () => {
+    await setExpandedState(!expandedRef.current);
+  }, [setExpandedState]);
+
+  const handleClose = useCallback(() => {
+    window.electron.invoke('window:hide-pill');
+  }, []);
+
+  // Auto-expand when state changes from idle
+  useEffect(() => {
+    if (state !== 'idle' && !expandedRef.current) {
+      setExpandedState(true);
+    }
+  }, [state, setExpandedState]);
+
+  // ── Auto-scroll ──
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
 
-  // Subscribe to events from main process
+  // ── IPC subscriptions ──
+
   useEffect(() => {
     const unsubs = [
       ipc.subscribe('sightline:state-changed', (data) => {
@@ -35,70 +125,49 @@ export default function SightlineBarWindow() {
       ipc.subscribe('sightline:chat', (data) => {
         const msg = data as ChatMessage;
         if (msg.isStreaming) {
-          // Show cumulative streaming text at the bottom (grows as deltas arrive)
           setStreamingText(msg.text);
         } else {
-          // Final or regular message: append to messages, clear streaming
           setStreamingText('');
           setMessages((prev) => [...prev, msg]);
         }
       }),
       ipc.subscribe('sightline:step', (data) => {
-        const step = data as { details: string };
+        const step = data as AutomationStep;
+        setSteps((prev) => [...prev, step]);
         setMessages((prev) => [...prev, { role: 'tool' as const, text: step.details }]);
       }),
     ];
-
     return () => unsubs.forEach((u) => u());
   }, []);
 
-  // Handle hotkey events
+  // ── Hotkey handlers ──
+
   useEffect(() => {
-    const unsubStart = window.electron.on('hotkey:start-recording', () => {
-      startRecording();
-    });
-
-    const unsubStop = window.electron.on('hotkey:stop-recording', () => {
-      stopRecording();
-    });
-
-    const unsubCancel = window.electron.on('hotkey:cancel-recording', () => {
-      cancelRecording();
-    });
-
-    return () => {
-      unsubStart();
-      unsubStop();
-      unsubCancel();
-    };
+    const unsubStart = window.electron.on('hotkey:start-recording', () => startRecording());
+    const unsubStop = window.electron.on('hotkey:stop-recording', () => stopRecording());
+    const unsubCancel = window.electron.on('hotkey:cancel-recording', () => cancelRecording());
+    return () => { unsubStart(); unsubStop(); unsubCancel(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Audio recording ──
 
   const playStartChime = useCallback(() => {
     const ctx = new AudioContext();
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
-
-    // Two ascending tones like Siri's activation chime
-    const notes = [
-      { freq: 880, start: 0, duration: 0.08 },
-      { freq: 1320, start: 0.09, duration: 0.12 },
-    ];
-
-    notes.forEach(({ freq, start, duration }) => {
+    [{ freq: 880, start: 0, dur: 0.08 }, { freq: 1320, start: 0.09, dur: 0.12 }].forEach(({ freq, start, dur }) => {
       const osc = ctx.createOscillator();
       const env = ctx.createGain();
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
       env.gain.setValueAtTime(0, ctx.currentTime + start);
       env.gain.linearRampToValueAtTime(0.18, ctx.currentTime + start + 0.01);
-      env.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + duration);
-      osc.connect(env);
-      env.connect(gain);
+      env.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
+      osc.connect(env); env.connect(gain);
       osc.start(ctx.currentTime + start);
-      osc.stop(ctx.currentTime + start + duration);
+      osc.stop(ctx.currentTime + start + dur);
     });
-
     setTimeout(() => ctx.close(), 500);
   }, []);
 
@@ -107,71 +176,48 @@ export default function SightlineBarWindow() {
       playStartChime();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-
-      // Set up audio level monitoring
       const audioCtx = new AudioContext();
       const source = audioCtx.createMediaStreamSource(stream);
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
       analyserRef.current = analyser;
-
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       const updateLevel = () => {
         analyser.getByteFrequencyData(dataArray);
-        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-        setAudioLevel(avg / 255);
+        setAudioLevel(dataArray.reduce((a, b) => a + b, 0) / dataArray.length / 255);
         animFrameRef.current = requestAnimationFrame(updateLevel);
       };
       updateLevel();
-
-      // Start recording - pick best supported format (webm not supported on macOS)
       const preferredTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
       const supportedType = preferredTypes.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
       const recorder = new MediaRecorder(stream, supportedType ? { mimeType: supportedType } : {});
       audioChunksRef.current = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
       recorder.start(100);
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
     } catch (error) {
       console.error('Failed to start recording:', error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stopRecording = useCallback(async () => {
-    setIsRecording(false);
-    setAudioLevel(0);
-
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
-
+    setIsRecording(false); setAudioLevel(0);
+    if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null; }
     const recorder = mediaRecorderRef.current;
     if (!recorder || recorder.state === 'inactive') return;
-
     return new Promise<void>((resolve) => {
       recorder.onstop = async () => {
         const actualMimeType = recorder.mimeType || 'audio/webm';
         const blob = new Blob(audioChunksRef.current, { type: actualMimeType });
-
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
-
         const reader = new FileReader();
         reader.onloadend = async () => {
           const base64 = (reader.result as string).split(',')[1];
-          if (base64) {
-            await ipc.invoke('sightline:transcribe', {
-              audioBase64: base64,
-              mimeType: actualMimeType,
-            });
-          }
+          if (base64) await ipc.invoke('sightline:transcribe', { audioBase64: base64, mimeType: actualMimeType });
           resolve();
         };
         reader.readAsDataURL(blob);
@@ -181,26 +227,17 @@ export default function SightlineBarWindow() {
   }, []);
 
   const cancelRecording = useCallback(() => {
-    setIsRecording(false);
-    setAudioLevel(0);
-
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
-
+    setIsRecording(false); setAudioLevel(0);
+    if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null; }
     const recorder = mediaRecorderRef.current;
-    if (recorder && recorder.state !== 'inactive') {
-      recorder.stop();
-    }
-
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
   }, []);
 
-  const handleCancel = () => {
-    ipc.invoke('sightline:cancel');
-  };
+  // ── Actions ──
+
+  const handleCancel = () => { ipc.invoke('sightline:cancel'); };
 
   const handleSendInstruction = () => {
     const text = inputText.trim();
@@ -211,252 +248,308 @@ export default function SightlineBarWindow() {
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendInstruction();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendInstruction(); }
   };
 
-  const stateLabel: Record<SightlineState, string> = {
-    idle: 'Ready',
-    listening: 'Listening...',
-    processing: 'Transcribing...',
-    acting: 'Working...',
-    speaking: 'Speaking...',
-    awaiting_response: 'Awaiting your response...',
+  const handlePillBodyClick = () => {
+    window.electron.invoke('window:show-config');
   };
 
-  const stateDotBg: Record<SightlineState, string> = {
-    idle: '#9CA3AF',
-    listening: '#4ADE80',
-    processing: '#FACC15',
-    acting: '#60A5FA',
-    speaking: '#C084FC',
-    awaiting_response: '#F59E0B',
-  };
+  // ── Derived ──
 
-  const stateLabelColor: Record<SightlineState, string> = {
-    idle: '#9CA3AF',
-    listening: '#4ADE80',
-    processing: '#FACC15',
-    acting: '#60A5FA',
-    speaking: '#C084FC',
-    awaiting_response: '#F59E0B',
-  };
-
+  const assistantMessages = messages.filter((m) => m.role === 'user' || m.role === 'assistant');
+  const rawMessages = messages.filter((m) => m.role === 'tool');
   const showInput = state === 'acting' || state === 'idle' || state === 'awaiting_response';
+  const isActive = state !== 'idle';
+  const stateColor = stateColors[state];
+
+  // ── Render ──
 
   return (
-    <div
-      className="h-full w-full flex flex-col overflow-hidden"
-      style={{
-        background: 'rgba(30, 30, 30, 0.85)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderTopLeftRadius: '12px',
-        borderTopRightRadius: '12px',
-        borderBottomLeftRadius: '0px',
-        borderBottomRightRadius: '0px',
-      }}
-    >
-      {/* Header — draggable region for moving the panel */}
+    <div style={{ width: '100%', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {/* ── Pill Bar (Cluely-style) ── */}
       <div
-        className="flex items-center justify-between px-4 py-2.5 flex-shrink-0"
         style={{
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          // @ts-expect-error: Electron-specific CSS property for frameless window dragging
+          display: 'flex',
+          alignItems: 'center',
+          height: 44,
+          width: 190,
+          padding: '0 4px',
+          gap: 4,
+          background: PILL_BG,
+          backdropFilter: GLASS_BLUR,
+          WebkitBackdropFilter: GLASS_BLUR,
+          borderRadius: 22,
+          flexShrink: 0,
+          // @ts-expect-error: Electron-specific
           WebkitAppRegion: 'drag',
           cursor: 'grab',
         }}
       >
-        <div className="flex items-center gap-2">
-          <span
-            className={state === 'listening' || state === 'acting' ? 'animate-pulse' : ''}
-            style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              backgroundColor: stateDotBg[state],
-              display: 'inline-block',
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontSize: '12px',
-              fontWeight: 500,
-              color: stateLabelColor[state],
-            }}
-          >
-            {stateLabel[state]}
-          </span>
-        </div>
-        <button
-          onClick={handleCancel}
+        {/* Logo — click opens config */}
+        <div
+          onClick={handlePillBodyClick}
           style={{
-            padding: '4px 12px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: 500,
-            backgroundColor: 'rgba(239, 68, 68, 0.2)',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            color: '#F87171',
+            width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
-            transition: 'background-color 150ms',
-            // @ts-expect-error: Electron-specific CSS property
+            // @ts-expect-error: Electron-specific
             WebkitAppRegion: 'no-drag',
           }}
-          onMouseEnter={(e) => {
-            (e.target as HTMLButtonElement).style.backgroundColor = 'rgba(239, 68, 68, 0.3)';
-          }}
-          onMouseLeave={(e) => {
-            (e.target as HTMLButtonElement).style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
-          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
         >
-          Cancel
+          <img src={logoSrc} alt="" style={{ width: 48, height: 48, objectFit: 'cover', filter: 'invert(1)' }} />
+        </div>
+
+        {/* Center: orange pill toggle button */}
+        <button
+          onClick={toggleExpanded}
+          title={expanded ? 'Hide' : 'Show'}
+          style={{
+            flex: 1,
+            height: 30,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+            background: ACCENT,
+            border: 'none',
+            borderRadius: 15,
+            color: '#fff',
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: 'pointer',
+            margin: '0 4px',
+            transition: 'transform 0.15s ease',
+            // @ts-expect-error: Electron-specific
+            WebkitAppRegion: 'no-drag',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.04)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+        >
+          {expanded ? <ChevronUp /> : <ChevronDown />}
+          <span>{expanded ? 'Hide' : 'Show'}</span>
+        </button>
+
+        {/* Close/dismiss button */}
+        <button
+          onClick={handleClose}
+          title="Dismiss"
+          style={{
+            width: 28, height: 28, borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.06)', border: 'none',
+            color: 'rgba(0,0,0,0.35)',
+            cursor: 'pointer', flexShrink: 0,
+            transition: 'background 0.15s, color 0.15s, transform 0.15s',
+            // @ts-expect-error: Electron-specific
+            WebkitAppRegion: 'no-drag',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.1)'; e.currentTarget.style.color = 'rgba(0,0,0,0.6)'; e.currentTarget.style.transform = 'scale(1.08)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.06)'; e.currentTarget.style.color = 'rgba(0,0,0,0.35)'; e.currentTarget.style.transform = 'scale(1)'; }}
+        >
+          <CloseIcon />
         </button>
       </div>
 
-      {/* Waveform (during recording) */}
-      {isRecording && (
-        <div className="flex-shrink-0" style={{ height: '24px' }}>
-          <WaveformView isActive={isRecording} audioLevel={audioLevel} dotCount={50} color="#22C55E" />
-        </div>
-      )}
+      {/* ── Transparent gap ── */}
+      {expanded && <div style={{ height: 8, flexShrink: 0 }} />}
 
-      {/* Processing spinner */}
-      {state === 'processing' && !isRecording && (
-        <div className="flex items-center justify-center flex-shrink-0" style={{ height: '24px' }}>
-          <div
-            className="animate-spin"
-            style={{
-              width: '16px',
-              height: '16px',
-              borderRadius: '50%',
-              border: '2px solid #FACC15',
-              borderTopColor: 'transparent',
-            }}
-          />
-        </div>
-      )}
-
-      {/* Messages area */}
-      <div
-        className="flex-1 overflow-y-auto"
-        style={{
-          padding: '8px 16px',
-          minHeight: 0,
-        }}
-      >
-        {messages.length === 0 && !streamingText && state === 'listening' && (
-          <p
-            style={{
-              fontSize: '12px',
-              color: '#6B7280',
-              textAlign: 'center',
-              marginTop: '16px',
-            }}
-          >
-            Listening... speak your command
-          </p>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              style={
-                msg.role === 'tool'
-                  ? {
-                      fontSize: '11px',
-                      lineHeight: '1.5',
-                      color: '#6B7280',
-                      fontStyle: 'italic',
-                    }
-                  : {
-                      fontSize: '12px',
-                      lineHeight: '1.6',
-                      color: msg.isError ? '#F87171' : msg.role === 'user' ? '#93C5FD' : '#E5E7EB',
-                    }
-              }
-            >
-              {msg.role === 'user' && (
-                <span style={{ color: '#60A5FA', fontWeight: 500 }}>You: </span>
-              )}
-              {msg.text}
-            </div>
-          ))}
-          {/* Live streaming text from assistant (grows as deltas arrive) */}
-          {streamingText && (
-            <div
-              style={{
-                fontSize: '12px',
-                lineHeight: '1.6',
-                color: '#E5E7EB',
-                opacity: 0.7,
-              }}
-            >
-              {streamingText}
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {/* Chat input area */}
-      {showInput && (
+      {/* ── Expanded Panel (white base) ── */}
+      {expanded && (
         <div
-          className="flex-shrink-0"
           style={{
-            padding: '8px 12px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            width: '100%',
+            minHeight: 0,
+            background: 'rgba(255,255,255,0.78)',
+            backdropFilter: GLASS_BLUR,
+            WebkitBackdropFilter: GLASS_BLUR,
+            borderRadius: 14,
+            overflow: 'hidden',
           }}
         >
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleInputKeyDown}
-              placeholder="Type a response..."
-              style={{
-                flex: 1,
-                padding: '6px 10px',
-                borderRadius: '8px',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                color: '#E5E7EB',
-                fontSize: '12px',
-                outline: 'none',
-              }}
-              onFocus={(e) => {
-                (e.target as HTMLInputElement).style.borderColor = 'rgba(139, 92, 246, 0.5)';
-              }}
-              onBlur={(e) => {
-                (e.target as HTMLInputElement).style.borderColor = 'rgba(255, 255, 255, 0.12)';
-              }}
-            />
+          {/* Tab Bar */}
+          <div style={{ display: 'flex', padding: '0 14px', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
+            {(['assistant', 'raw'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  padding: '10px 12px', background: 'none', border: 'none',
+                  borderBottom: activeTab === tab ? `2px solid ${ACCENT}` : '2px solid transparent',
+                  color: activeTab === tab ? '#1a1a1e' : '#999',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  transition: 'color 0.15s, border-color 0.15s',
+                  // @ts-expect-error: Electron-specific
+                  WebkitAppRegion: 'no-drag',
+                }}
+              >
+                {tab === 'assistant' ? 'Assistant' : 'Raw Log'}
+              </button>
+            ))}
+
+            <div style={{ flex: 1 }} />
+
+            {/* Close X */}
             <button
-              onClick={handleSendInstruction}
-              disabled={!inputText.trim()}
+              onClick={handleClose}
+              title="Close"
               style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontWeight: 500,
-                background: inputText.trim()
-                  ? 'linear-gradient(135deg, #3B82F6, #8B5CF6)'
-                  : 'rgba(255, 255, 255, 0.06)',
-                color: inputText.trim() ? '#FFFFFF' : '#6B7280',
-                border: 'none',
-                cursor: inputText.trim() ? 'pointer' : 'default',
-                transition: 'opacity 150ms',
-                flexShrink: 0,
+                width: 24, height: 24, borderRadius: '50%',
+                background: 'transparent', border: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', flexShrink: 0, alignSelf: 'center',
+                color: '#ccc',
+                transition: 'color 0.15s',
+                // @ts-expect-error: Electron-specific
+                WebkitAppRegion: 'no-drag',
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = ACCENT; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#ccc'; }}
             >
-              Send
+              <CloseIcon />
             </button>
           </div>
+
+          {/* Status bar + waveform (when active) */}
+          {isActive && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderBottom: '1px solid rgba(0,0,0,0.05)', flexShrink: 0 }}>
+              {isRecording ? (
+                <>
+                  <span className="animate-pulse" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#22C55E', flexShrink: 0 }} />
+                  <div style={{ width: 80, height: 18 }}>
+                    <WaveformView isActive={isRecording} audioLevel={audioLevel} dotCount={20} color="#22C55E" />
+                  </div>
+                  <span style={{ fontSize: 11, color: '#666', fontWeight: 500, marginLeft: 4 }}>Listening...</span>
+                </>
+              ) : state === 'processing' ? (
+                <>
+                  <div className="animate-spin" style={{ width: 10, height: 10, borderRadius: '50%', border: '1.5px solid #EAB308', borderTopColor: 'transparent' }} />
+                  <span style={{ fontSize: 11, color: '#666', fontWeight: 500 }}>{stateLabels[state]}</span>
+                </>
+              ) : (
+                <>
+                  <span className={state === 'listening' || state === 'acting' ? 'animate-pulse' : ''} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: stateColor || '#9CA3AF' }} />
+                  <span style={{ fontSize: 11, color: '#666', fontWeight: 500 }}>{stateLabels[state]}</span>
+                </>
+              )}
+
+              {/* Stop button */}
+              <div style={{ flex: 1 }} />
+              <button
+                onClick={handleCancel}
+                title="Stop"
+                style={{
+                  width: 22, height: 22, borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.06)', border: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', flexShrink: 0, transition: 'background 0.15s, transform 0.15s',
+                  // @ts-expect-error: Electron-specific
+                  WebkitAppRegion: 'no-drag',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#E0E0E0'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#F0F0F0'; e.currentTarget.style.transform = 'scale(1)'; }}
+              >
+                <div style={{ width: 7, height: 7, borderRadius: 1.5, backgroundColor: '#666' }} />
+              </button>
+            </div>
+          )}
+
+          {/* Messages */}
+          <div className="scrollbar-hide" style={{ flex: 1, overflowY: 'auto', padding: '10px 14px', minHeight: 0 }}>
+            {((activeTab === 'assistant' ? assistantMessages : rawMessages).length === 0 && !streamingText) ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 6, opacity: 0.5 }}>
+                <span style={{ fontSize: 12, color: '#999' }}>
+                  {activeTab === 'assistant' ? 'Press Option to speak' : 'Logs will appear here'}
+                </span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {activeTab === 'assistant' ? (
+                  <>
+                    {assistantMessages.map((msg, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                        <div style={{
+                          maxWidth: '85%', padding: '7px 11px', borderRadius: 10, fontSize: 12.5, lineHeight: 1.5,
+                          ...(msg.role === 'user'
+                            ? { backgroundColor: 'rgba(255,161,0,0.12)', color: '#1a1a1e', borderBottomRightRadius: 3 }
+                            : { backgroundColor: '#F5F5F5', color: msg.isError ? '#DC2626' : '#1a1a1e', borderBottomLeftRadius: 3 }),
+                        }}>
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))}
+                    {streamingText && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                        <div style={{ maxWidth: '85%', padding: '7px 11px', borderRadius: 10, borderBottomLeftRadius: 3, fontSize: 12.5, lineHeight: 1.5, backgroundColor: '#F5F5F5', color: '#1a1a1e', opacity: 0.8 }}>
+                          {streamingText}<span className="animate-pulse" style={{ marginLeft: 2, color: ACCENT }}>|</span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {rawMessages.map((msg, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '4px 0' }}>
+                        <span style={{ color: '#ccc', fontSize: 10, flexShrink: 0, marginTop: 2 }}>→</span>
+                        <span style={{ fontSize: 11.5, lineHeight: 1.5, color: '#666', fontFamily: 'monospace', wordBreak: 'break-word' }}>{msg.text}</span>
+                      </div>
+                    ))}
+                    {steps.filter((_, i) => i >= rawMessages.length).map((step, i) => (
+                      <div key={`s-${i}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '4px 0' }}>
+                        <span style={{ color: ACCENT, fontSize: 10, flexShrink: 0, marginTop: 2 }}>&#9656;</span>
+                        <span style={{ fontSize: 11.5, color: '#1a1a1e', fontWeight: 500, fontFamily: 'monospace' }}>{step.action}</span>
+                        <span style={{ fontSize: 11, color: '#666', fontFamily: 'monospace' }}>{step.details}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
+
+          {/* Input */}
+          {showInput && (
+            <div style={{ flexShrink: 0, padding: '8px 10px', borderTop: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleInputKeyDown}
+                placeholder="Type a message..."
+                style={{
+                  flex: 1, padding: '7px 10px', background: 'rgba(0,0,0,0.04)',
+                  border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10,
+                  color: '#1a1a1e', fontSize: 12.5, outline: 'none',
+                  transition: 'border-color 0.2s ease',
+                  // @ts-expect-error: Electron-specific
+                  WebkitAppRegion: 'no-drag',
+                }}
+                onFocus={(e) => { e.target.style.borderColor = ACCENT; }}
+                onBlur={(e) => { e.target.style.borderColor = 'rgba(0,0,0,0.08)'; }}
+              />
+              <button
+                onClick={handleSendInstruction}
+                disabled={!inputText.trim()}
+                style={{
+                  width: 30, height: 30, borderRadius: '50%',
+                  background: inputText.trim() ? ACCENT : 'rgba(0,0,0,0.08)',
+                  border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: inputText.trim() ? 'pointer' : 'default', flexShrink: 0,
+                  transition: 'background 0.15s, transform 0.15s',
+                  // @ts-expect-error: Electron-specific
+                  WebkitAppRegion: 'no-drag',
+                }}
+                onMouseEnter={(e) => { if (inputText.trim()) { e.currentTarget.style.background = '#E89000'; e.currentTarget.style.transform = 'scale(1.05)'; } }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = inputText.trim() ? ACCENT : '#E5E5E5'; e.currentTarget.style.transform = 'scale(1)'; }}
+              >
+                <SendIcon />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
