@@ -15,7 +15,21 @@ import { Platforms } from './components/Platforms';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
 
+// Block loading inside Electron — this website is browser-only
+const isElectron = typeof window !== 'undefined' && !!(window as Record<string, unknown>).electron;
+
 function App() {
+  if (isElectron) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'system-ui', textAlign: 'center', padding: '2rem' }}>
+        <div>
+          <h1>Browser Only</h1>
+          <p>This website is meant to be viewed in your browser. The Thea desktop app is already installed.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <a href="#main-content" className="skip-link">Skip to main content</a>
