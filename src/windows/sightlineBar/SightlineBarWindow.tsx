@@ -77,7 +77,7 @@ function formatMessage(text: string) {
         parts.push(para.slice(lastIdx, match.index));
       }
       parts.push(
-        <strong key={`b-${i}-${match.index}`} style={{ color: '#FFFFFF', fontWeight: 600 }}>
+        <strong key={`b-${i}-${match.index}`} style={{ color: '#1a1a1e', fontWeight: 600 }}>
           {match[1]}
         </strong>,
       );
@@ -102,6 +102,7 @@ export default function SightlineBarWindow() {
   const [inputText, setInputText] = useState('');
 
   // Core state
+  const [provider, setProvider] = useState('');
   const [state, setState] = useState<SightlineState>('idle');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [steps, setSteps] = useState<AutomationStep[]>([]);
@@ -150,6 +151,11 @@ export default function SightlineBarWindow() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
+
+  // ── Fetch provider on mount ──
+  useEffect(() => {
+    ipc.invoke('sightline:get-provider').then((p: unknown) => { if (typeof p === 'string') setProvider(p); });
+  }, []);
 
   // ── IPC subscriptions ──
 
@@ -208,6 +214,8 @@ export default function SightlineBarWindow() {
     });
     setTimeout(() => ctx.close(), 500);
   }, []);
+
+
 
   const startRecording = useCallback(async () => {
     try {
@@ -391,109 +399,9 @@ export default function SightlineBarWindow() {
       {/* ── Transparent gap ── */}
       {expanded && <div style={{ height: 8, flexShrink: 0 }} />}
 
-      {/* Messages area */}
-      <div
-        className="flex-1 overflow-y-auto"
-        style={{
-          padding: '8px 16px',
-          minHeight: 0,
-        }}
-      >
-        {messages.length === 0 && !streamingText && state === 'listening' && (
-          <p
-            style={{
-              fontSize: '12px',
-              color: '#6B7280',
-              textAlign: 'center',
-              marginTop: '16px',
-            }}
-          >
-            Listening... speak your command
-          </p>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {messages.map((msg, i) => {
-            if (msg.role === 'tool') {
-              return (
-                <div
-                  key={i}
-                  style={{
-                    fontSize: '11px',
-                    lineHeight: '1.4',
-                    color: '#6B7280',
-                    padding: '3px 8px',
-                    borderLeft: '2px solid rgba(107, 114, 128, 0.3)',
-                    marginLeft: '4px',
-                  }}
-                >
-                  {msg.text}
-                </div>
-              );
-            }
 
-            if (msg.role === 'user') {
-              return (
-                <div
-                  key={i}
-                  style={{
-                    fontSize: '12px',
-                    lineHeight: '1.5',
-                    color: '#93C5FD',
-                    padding: '6px 10px',
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(96, 165, 250, 0.1)',
-                    border: '1px solid rgba(96, 165, 250, 0.15)',
-                    marginTop: i > 0 ? '4px' : 0,
-                  }}
-                >
-                  <span style={{ color: '#60A5FA', fontWeight: 600, fontSize: '11px', textTransform: 'uppercase' as const, letterSpacing: '0.5px' }}>You</span>
-                  <div style={{ marginTop: '2px' }}>{msg.text}</div>
-                </div>
-              );
-            }
-
-            // Assistant message
-            return (
-              <div
-                key={i}
-                style={{
-                  fontSize: '12px',
-                  lineHeight: '1.6',
-                  color: msg.isError ? '#F87171' : '#E5E7EB',
-                  padding: '6px 10px',
-                  borderRadius: '8px',
-                  backgroundColor: msg.isError ? 'rgba(248, 113, 113, 0.08)' : 'rgba(255, 255, 255, 0.04)',
-                  border: msg.isError ? '1px solid rgba(248, 113, 113, 0.2)' : '1px solid rgba(255, 255, 255, 0.06)',
-                  marginTop: i > 0 ? '4px' : 0,
-                }}
-              >
-                {formatMessage(msg.text)}
-              </div>
-            );
-          })}
-          {/* Live streaming text from assistant (grows as deltas arrive) */}
-          {streamingText && (
-            <div
-              style={{
-                fontSize: '12px',
-                lineHeight: '1.6',
-                color: '#E5E7EB',
-                opacity: 0.7,
-                padding: '6px 10px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
-              }}
-            >
-              {formatMessage(streamingText)}
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {/* Chat input area */}
-      {showInput && (
+      {/* Chat panel */}
+      {expanded && (
         <div
           style={{
             display: 'flex',
@@ -501,7 +409,7 @@ export default function SightlineBarWindow() {
             flex: 1,
             width: '100%',
             minHeight: 0,
-            background: 'rgba(255,255,255,0.78)',
+            background: 'rgba(255,255,255,0.92)',
             backdropFilter: GLASS_BLUR,
             WebkitBackdropFilter: GLASS_BLUR,
             borderRadius: 14,
@@ -529,6 +437,19 @@ export default function SightlineBarWindow() {
             ))}
 
             <div style={{ flex: 1 }} />
+
+            {/* Model badge */}
+            {provider && (
+              <span style={{
+                fontSize: 10, fontWeight: 500, color: '#999',
+                padding: '2px 7px', borderRadius: 6,
+                background: 'rgba(0,0,0,0.04)',
+                alignSelf: 'center', flexShrink: 0,
+                textTransform: 'uppercase', letterSpacing: '0.3px',
+              }}>
+                {provider === 'anthropic' ? 'Claude' : provider === 'openai' ? 'GPT' : provider}
+              </span>
+            )}
 
             {/* Close X */}
             <button
@@ -612,17 +533,17 @@ export default function SightlineBarWindow() {
                         <div style={{
                           maxWidth: '85%', padding: '7px 11px', borderRadius: 10, fontSize: 12.5, lineHeight: 1.5,
                           ...(msg.role === 'user'
-                            ? { backgroundColor: 'rgba(255,161,0,0.12)', color: '#1a1a1e', borderBottomRightRadius: 3 }
-                            : { backgroundColor: '#F5F5F5', color: msg.isError ? '#DC2626' : '#1a1a1e', borderBottomLeftRadius: 3 }),
+                            ? { backgroundColor: 'rgba(255,161,0,0.15)', color: '#1a1a1e', borderBottomRightRadius: 3 }
+                            : { backgroundColor: 'rgba(0,0,0,0.06)', color: msg.isError ? '#DC2626' : '#1a1a1e', borderBottomLeftRadius: 3 }),
                         }}>
-                          {msg.text}
+                          {msg.role === 'assistant' ? formatMessage(msg.text) : msg.text}
                         </div>
                       </div>
                     ))}
                     {streamingText && (
                       <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                        <div style={{ maxWidth: '85%', padding: '7px 11px', borderRadius: 10, borderBottomLeftRadius: 3, fontSize: 12.5, lineHeight: 1.5, backgroundColor: '#F5F5F5', color: '#1a1a1e', opacity: 0.8 }}>
-                          {streamingText}<span className="animate-pulse" style={{ marginLeft: 2, color: ACCENT }}>|</span>
+                        <div style={{ maxWidth: '85%', padding: '7px 11px', borderRadius: 10, borderBottomLeftRadius: 3, fontSize: 12.5, lineHeight: 1.5, backgroundColor: 'rgba(0,0,0,0.06)', color: '#1a1a1e', opacity: 0.8 }}>
+                          {formatMessage(streamingText)}<span className="animate-pulse" style={{ marginLeft: 2, color: ACCENT }}>|</span>
                         </div>
                       </div>
                     )}
@@ -631,8 +552,8 @@ export default function SightlineBarWindow() {
                   <>
                     {rawMessages.map((msg, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '4px 0' }}>
-                        <span style={{ color: '#ccc', fontSize: 10, flexShrink: 0, marginTop: 2 }}>→</span>
-                        <span style={{ fontSize: 11.5, lineHeight: 1.5, color: '#666', fontFamily: 'monospace', wordBreak: 'break-word' }}>{msg.text}</span>
+                        <span style={{ color: '#999', fontSize: 10, flexShrink: 0, marginTop: 2 }}>→</span>
+                        <span style={{ fontSize: 11.5, lineHeight: 1.5, color: '#444', fontFamily: 'monospace', wordBreak: 'break-word' }}>{msg.text}</span>
                       </div>
                     ))}
                     {steps.filter((_, i) => i >= rawMessages.length).map((step, i) => (

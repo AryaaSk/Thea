@@ -151,11 +151,6 @@ class OpenClawManager {
     gw.auth = { mode: 'token', token: this.authToken };
     gw.bind = 'loopback';
 
-    // Cheaper/faster model for sub-agents
-    const subagentModel = provider === 'anthropic'
-      ? 'anthropic/claude-sonnet-4-5'
-      : 'openai/gpt-4o-mini';
-
     // Merge agents config — only set defaults if not already present
     if (!config.agents) config.agents = {};
     const agents = config.agents as Record<string, unknown>;
@@ -165,7 +160,7 @@ class OpenClawManager {
     // Only set subagents config if not already configured
     if (!defaults.subagents) {
       defaults.subagents = {
-        model: subagentModel,
+        model: defaultModel,
         thinking: 'medium',
         maxSpawnDepth: 2,
         maxChildrenPerAgent: 10,

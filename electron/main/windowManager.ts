@@ -75,7 +75,7 @@ class WindowManager {
     this.configWindow.on('close', (e) => {
       if (!_isQuitting) {
         e.preventDefault();
-        this.configWindow?.minimize();
+        this.configWindow?.hide();
       }
     });
 

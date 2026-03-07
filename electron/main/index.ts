@@ -4,7 +4,9 @@ import { loadEnvFile } from 'node:process';
 // Load .env before any other imports
 try { loadEnvFile(); } catch { /* no .env file */ }
 
-import { app, systemPreferences } from 'electron';
+import { app, systemPreferences, nativeImage } from 'electron';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { windowManager, setQuitting } from './windowManager.js';
 import { registerIpcHandlers } from './ipcHandlers.js';
 import { openclawManager } from './managers/openclawManager.js';
@@ -23,6 +25,16 @@ app.on('second-instance', () => {
 
 app.whenReady().then(async () => {
   console.log('Sightline starting...');
+
+  // Set dock icon
+  if (process.platform === 'darwin') {
+    const iconPath = app.isPackaged
+      ? path.join(process.resourcesPath, '..', 'Resources', 'icon.icns')
+      : path.join(path.dirname(fileURLToPath(import.meta.url)), '../../build/icon.png');
+    try {
+      app.dock.setIcon(nativeImage.createFromPath(iconPath));
+    } catch { /* ignore if icon not found */ }
+  }
 
   // Register IPC handlers
   registerIpcHandlers();
