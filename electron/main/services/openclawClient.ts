@@ -25,7 +25,7 @@ interface OpenClawFrame {
 // Callbacks for session manager to hook into events
 export interface OpenClawEventCallbacks {
   onChatDelta?: (text: string) => void;
-  onChatFinal?: () => void;
+  onChatFinal?: (finalText: string) => void;
   onChatError?: (error: string) => void;
   onToolCall?: (toolName: string, params: unknown) => void;
   onToolResult?: (toolName: string, result: unknown) => void;
@@ -261,6 +261,7 @@ class OpenClawClient {
       } else if (state === 'final') {
         console.log('[OpenClawClient] Agent done');
         // Final event contains the complete message (confirmed from OpenClaw source)
+        let finalText = '';
         if (typeof rawMessage === 'object' && rawMessage !== null) {
           const msg = rawMessage as Record<string, unknown>;
           const content = msg.content;
@@ -272,16 +273,17 @@ class OpenClawClient {
                 textParts.push(b.text as string);
               }
             }
-            if (textParts.length > 0) {
+            finalText = textParts.join('\n');
+            if (finalText) {
               windowManager.broadcastToAll('sightline:chat', {
                 role: 'assistant',
-                text: textParts.join('\n'),
+                text: finalText,
               });
             }
           }
         }
         this.lastCumulativeText = '';
-        this.eventCallbacks.onChatFinal?.();
+        this.eventCallbacks.onChatFinal?.(finalText);
         if (this.runResolve) {
           this.runResolve();
           this.runResolve = null;
@@ -294,6 +296,7 @@ class OpenClawClient {
         }
       } else if (state === 'error') {
         const errorMsg = (data.errorMessage as string) || 'unknown error';
+        console.error(`[OpenClawClient] Chat error from OpenClaw agent: ${errorMsg}`);
         windowManager.broadcastToAll('sightline:chat', { role: 'assistant', text: errorMsg, isError: true });
         this.eventCallbacks.onChatError?.(errorMsg);
         this.lastCumulativeText = '';
@@ -303,10 +306,31 @@ class OpenClawClient {
         }
       }
     } else if (event === 'agent') {
+      const stream = data.stream as string | undefined;
       const type = data.type as string;
+      const phase = data.phase as string | undefined;
+      const runId = (frame.data as Record<string, unknown>)?.runId || data.runId || 'unknown';
 
-      if (data.isError || (typeof data.error === 'string' && data.error)) {
+      // Handle assistant text streaming via agent events
+      if (stream === 'assistant' && data.delta) {
+        const delta = data.delta as string;
+        const cumulativeText = data.text as string;
+        if (delta) {
+          this.eventCallbacks.onChatDelta?.(delta);
+        }
+        if (cumulativeText) {
+          windowManager.broadcastToAll('sightline:chat', {
+            role: 'assistant',
+            text: cumulativeText,
+            isStreaming: true,
+          });
+        }
+      }
+
+      if (phase === 'error' || data.isError || (typeof data.error === 'string' && data.error)) {
         const errorMsg = (data.error as string) || 'An error occurred';
+        console.error(`[OpenClawClient] Agent error (runId=${runId}, phase=${phase || type}): ${errorMsg}`);
+        console.error('[OpenClawClient] This is the OpenClaw embedded agent hitting YOUR AI provider rate limit — not Sightline code.');
         windowManager.broadcastToAll('sightline:chat', { role: 'assistant', text: errorMsg, isError: true });
         this.eventCallbacks.onChatError?.(errorMsg);
       } else if (type === 'tool_call' || data.tool) {

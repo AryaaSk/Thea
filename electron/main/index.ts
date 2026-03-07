@@ -48,8 +48,9 @@ app.whenReady().then(async () => {
     hotkeyManager.register();
   }
 
-  // Show config window
+  // Show config window and sightline bar
   windowManager.showConfigWindow();
+  windowManager.showSightlineBar();
 });
 
 app.on('activate', () => {

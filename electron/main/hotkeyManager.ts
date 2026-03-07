@@ -2,6 +2,7 @@
 import { uIOhook } from 'uiohook-napi';
 import { windowManager } from './windowManager.js';
 import { sessionManager } from './managers/sessionManager.js';
+import { ttsService } from './services/ttsService.js';
 
 // Right Option/Alt key code (works on macOS and Windows)
 const PUSH_TO_TALK_KEY = 3640;
@@ -65,11 +66,18 @@ class HotkeyManager {
 
   private onKeyDown(): void {
     console.log('[Hotkey] Key pressed - start recording');
+    ttsService.stop();
     sessionManager.setListening();
 
     const sightlineBar = windowManager.getSightlineBarWindow();
     if (sightlineBar && !sightlineBar.isDestroyed()) {
-      sightlineBar.webContents.send('hotkey:start-recording');
+      if (sightlineBar.webContents.isLoading()) {
+        sightlineBar.webContents.once('did-finish-load', () => {
+          sightlineBar.webContents.send('hotkey:start-recording');
+        });
+      } else {
+        sightlineBar.webContents.send('hotkey:start-recording');
+      }
     }
   }
 

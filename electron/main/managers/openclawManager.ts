@@ -23,7 +23,25 @@ Rules:
 6. Keep responses short and speakable - they will be read aloud via text-to-speech
 7. Focus on semantic content, not visual layout details
 8. For forms, identify all fields and offer to fill them
-9. When describing search results or lists, summarize the key options concisely`;
+9. When describing search results or lists, summarize the key options concisely
+
+Capabilities — you CAN and SHOULD do these when asked:
+- You have full access to the terminal, file system, and browser. Use them proactively.
+- If the user asks you to set up, configure, or install something, just do it. Never say "I can't do that" or tell them to do it manually.
+- The OpenClaw config file is at ~/.openclaw/openclaw.json. You can read and edit it directly to add API keys, change settings, etc. After editing, tell the user it's done.
+- You can run shell commands, install packages, create/edit files, and perform any system task the user requests.
+- If the user gives you an API key or credential, add it to the appropriate config file immediately.
+
+Sub-agents:
+You can spawn multiple sub-agents to work in parallel using the sessions_spawn tool. Use this when the user asks you to research multiple topics, investigate several options, or do any task that benefits from parallelism.
+- Each sub-agent runs independently and reports back when done
+- Spawn as many sub-agents as needed (up to 10 concurrent)
+- Give each sub-agent a clear, specific task
+- Sub-agents can browse the web, run commands, and use all standard tools
+- When sub-agents complete, synthesize their results into a clear spoken summary for the user
+- Always tell the user how many sub-agents you are spawning and what each one is doing`;
+
+export type SubagentResultCallback = (text: string) => void;
 
 class OpenClawManager {
   private process: ChildProcess | null = null;
@@ -35,6 +53,11 @@ class OpenClawManager {
   private maxRetries = 3;
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private isShuttingDown = false;
+  private subagentResultCallback: SubagentResultCallback | null = null;
+
+  onSubagentResult(cb: SubagentResultCallback): void {
+    this.subagentResultCallback = cb;
+  }
 
   private getNodePath(): string {
     const binary = process.platform === 'win32' ? 'node.exe' : 'node';
@@ -65,10 +88,6 @@ class OpenClawManager {
       fs.mkdirSync(configDir, { recursive: true });
     }
 
-    if (!this.authToken) {
-      this.authToken = crypto.randomBytes(32).toString('hex');
-    }
-
     const configPath = path.join(configDir, 'openclaw.json');
 
     let config: Record<string, unknown> = {};
@@ -78,14 +97,19 @@ class OpenClawManager {
       }
     } catch { /* start fresh */ }
 
-    const existingGateway = (config.gateway || {}) as Record<string, unknown>;
-    config.gateway = {
-      ...existingGateway,
-      mode: 'local',
-      port: OPENCLAW_PORT,
-      auth: { mode: 'token', token: this.authToken },
-      bind: 'loopback',
-    };
+    // Reuse existing auth token from config if available
+    if (!this.authToken) {
+      const existingGateway = (config.gateway || {}) as Record<string, unknown>;
+      const existingAuth = (existingGateway.auth || {}) as Record<string, unknown>;
+      this.authToken = (existingAuth.token as string) || crypto.randomBytes(32).toString('hex');
+    }
+
+    if (!config.gateway) config.gateway = {};
+    const gw = config.gateway as Record<string, unknown>;
+    gw.mode = 'local';
+    gw.port = OPENCLAW_PORT;
+    gw.auth = { mode: 'token', token: this.authToken };
+    gw.bind = 'loopback';
 
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
   }
@@ -94,10 +118,6 @@ class OpenClawManager {
     const configDir = this.getOpenClawHome();
     if (!fs.existsSync(configDir)) {
       fs.mkdirSync(configDir, { recursive: true });
-    }
-
-    if (!this.authToken) {
-      this.authToken = crypto.randomBytes(32).toString('hex');
     }
 
     const apiKey = apiKeyManager.getApiKey();
@@ -116,23 +136,48 @@ class OpenClawManager {
       }
     } catch { /* start fresh */ }
 
-    const existingGateway = (config.gateway || {}) as Record<string, unknown>;
-    config.gateway = {
-      ...existingGateway,
-      mode: 'local',
-      port: OPENCLAW_PORT,
-      auth: { mode: 'token', token: this.authToken },
-      bind: 'loopback',
-    };
+    // Reuse existing auth token from config if available
+    if (!this.authToken) {
+      const existingGateway = (config.gateway || {}) as Record<string, unknown>;
+      const existingAuth = (existingGateway.auth || {}) as Record<string, unknown>;
+      this.authToken = (existingAuth.token as string) || crypto.randomBytes(32).toString('hex');
+    }
 
-    const existingAgents = (config.agents || {}) as Record<string, unknown>;
-    const existingDefaults = (existingAgents.defaults || {}) as Record<string, unknown>;
-    config.agents = {
-      ...existingAgents,
-      defaults: { ...existingDefaults, model: defaultModel },
-    };
+    // Merge gateway — only set required keys, preserve everything else
+    if (!config.gateway) config.gateway = {};
+    const gw = config.gateway as Record<string, unknown>;
+    gw.mode = 'local';
+    gw.port = OPENCLAW_PORT;
+    gw.auth = { mode: 'token', token: this.authToken };
+    gw.bind = 'loopback';
 
-    const env = { ...((config.env as Record<string, string>) || {}) };
+    // Cheaper/faster model for sub-agents
+    const subagentModel = provider === 'anthropic'
+      ? 'anthropic/claude-sonnet-4-5'
+      : 'openai/gpt-4o-mini';
+
+    // Merge agents config — only set defaults if not already present
+    if (!config.agents) config.agents = {};
+    const agents = config.agents as Record<string, unknown>;
+    if (!agents.defaults) agents.defaults = {};
+    const defaults = agents.defaults as Record<string, unknown>;
+    defaults.model = defaultModel;
+    // Only set subagents config if not already configured
+    if (!defaults.subagents) {
+      defaults.subagents = {
+        model: subagentModel,
+        thinking: 'medium',
+        maxSpawnDepth: 2,
+        maxChildrenPerAgent: 10,
+        maxConcurrent: 10,
+        runTimeoutSeconds: 300,
+        archiveAfterMinutes: 30,
+      };
+    }
+
+    // Merge env — preserve all existing keys, only update Sightline-managed ones
+    if (!config.env) config.env = {};
+    const env = config.env as Record<string, string>;
     if (apiKey) {
       if (provider === 'anthropic') {
         env.ANTHROPIC_API_KEY = apiKey;
@@ -140,16 +185,17 @@ class OpenClawManager {
         env.OPENAI_API_KEY = apiKey;
       }
     }
-    config.env = env;
 
-    // Always enable browser and playwright
-    config.browser = { enabled: true };
+    // Ensure browser and playwright are enabled without overwriting other keys
+    if (!config.browser) config.browser = {};
+    (config.browser as Record<string, unknown>).enabled = true;
 
-    const existingSkills = ((config as Record<string, unknown>).skills || {}) as Record<string, unknown>;
-    const existingEntries = ((existingSkills.entries || {}) as Record<string, Record<string, unknown>>);
-    existingEntries['playwright'] = { ...(existingEntries['playwright'] || {}), enabled: true };
-    existingSkills.entries = existingEntries;
-    (config as Record<string, unknown>).skills = existingSkills;
+    if (!config.skills) config.skills = {};
+    const skills = config.skills as Record<string, unknown>;
+    if (!skills.entries) skills.entries = {};
+    const entries = skills.entries as Record<string, Record<string, unknown>>;
+    if (!entries.playwright) entries.playwright = {};
+    entries.playwright.enabled = true;
 
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
     console.log('[OpenClaw] Config written to:', configPath);
@@ -243,8 +289,18 @@ class OpenClawManager {
       });
 
       this.process.stdout?.on('data', (data: Buffer) => {
-        const line = data.toString().trim();
-        if (line) console.log('[OpenClaw stdout]', line);
+        const raw = data.toString().trim();
+        if (!raw) return;
+        console.log('[OpenClaw stdout]', raw);
+
+        // Detect sub-agent announce results: lines starting with ISO timestamp followed by text
+        // e.g. "2026-03-07T16:11:49.904+00:00 I attempted to gather..."
+        for (const line of raw.split('\n')) {
+          const match = line.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+[+Z][\d:]* (.+)/);
+          if (match && match[1] && match[1].length > 20) {
+            this.subagentResultCallback?.(match[1]);
+          }
+        }
       });
 
       this.process.stderr?.on('data', (data: Buffer) => {
