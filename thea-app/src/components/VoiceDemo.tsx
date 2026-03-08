@@ -148,7 +148,6 @@ function MockScreen({ screenType, phase }: { screenType: Command['screenType']; 
 }
 
 export function VoiceDemo() {
-  const _sectionRef = useScrollReveal<HTMLDivElement>(0);
   const screenRef = useScrollReveal<HTMLDivElement>(150);
   const chipsRef = useScrollReveal<HTMLDivElement>(300);
 
