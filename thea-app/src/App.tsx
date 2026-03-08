@@ -16,7 +16,7 @@ import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
 
 // Block loading inside Electron — this website is browser-only
-const isElectron = typeof window !== 'undefined' && !!(window as Record<string, unknown>).electron;
+const isElectron = typeof window !== 'undefined' && !!(window as unknown as Record<string, unknown>).electron;
 
 function App() {
   if (isElectron) {
