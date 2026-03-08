@@ -1040,191 +1040,22 @@ section {
   background: transparent;
 }
 
-.browser-window {
-  max-width: 680px;
+.demo-video {
+  max-width: 800px;
   margin: 0 auto;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--border);
-  background: var(--bg-card);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.08), 0 0 120px rgba(200, 155, 60, 0.04);
   position: relative;
+  aspect-ratio: 16 / 9;
 }
 
-.browser-window::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: 13px;
-  padding: 1px;
-  background: linear-gradient(180deg, rgba(200, 155, 60, 0.2) 0%, var(--border) 50%, rgba(200, 155, 60, 0.15) 100%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.browser-topbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 18px;
-  background: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border);
-}
-
-.browser-dots {
-  display: flex;
-  gap: 7px;
-}
-
-.browser-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.browser-dot--red { background: #ff5f57; }
-.browser-dot--yellow { background: #febc2e; }
-.browser-dot--green { background: #28c840; }
-
-.browser-url {
-  flex: 1;
-  background: var(--bg-primary);
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  border: 1px solid var(--border);
-}
-
-.browser-body {
-  padding: 28px 24px;
-  min-height: 380px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-/* Chat messages */
-.chat-msg {
-  display: flex;
-  flex-direction: column;
-  max-width: 85%;
-  opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.4s, transform 0.4s;
-}
-
-.chat-msg.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.chat-msg--user {
-  align-self: flex-end;
-  align-items: flex-end;
-}
-
-.chat-msg--agent {
-  align-self: flex-start;
-  align-items: flex-start;
-}
-
-.chat-msg-label {
-  font-family: var(--font-mono);
-  font-weight: 500;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
-}
-
-.chat-msg--user .chat-msg-label { color: var(--accent-gold); }
-.chat-msg--agent .chat-msg-label { color: #71717A; }
-
-.chat-msg-bubble {
-  padding: 12px 18px;
-  border-radius: 12px;
-  font-size: 0.92rem;
-  line-height: 1.5;
-}
-
-.chat-msg--user .chat-msg-bubble {
-  background: rgba(200, 155, 60, 0.08);
-  border: 1px solid rgba(200, 155, 60, 0.2);
-  color: var(--text-primary);
-}
-
-.chat-msg--agent .chat-msg-bubble {
-  background: rgba(113, 113, 122, 0.06);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-}
-
-.chat-msg--confirm .chat-msg-bubble {
-  background: rgba(239, 68, 68, 0.06);
-  border: 1px solid rgba(239, 68, 68, 0.15);
-}
-
-.chat-msg--success .chat-msg-bubble {
-  background: rgba(34, 197, 94, 0.08);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  color: var(--accent-green);
-}
-
-/* Typing indicator */
-.typing-indicator {
-  display: none;
-  align-self: flex-start;
-  padding: 14px 20px;
-  background: rgba(113, 113, 122, 0.06);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  gap: 5px;
-}
-
-.typing-indicator.active {
-  display: flex;
-}
-
-.typing-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent-gold);
-  opacity: 0.4;
-  animation: bounce 1.2s infinite;
-}
-
-.typing-dot:nth-child(2) { animation-delay: 0.15s; }
-.typing-dot:nth-child(3) { animation-delay: 0.3s; }
-
-@keyframes bounce {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-  30% { transform: translateY(-8px); opacity: 1; }
-}
-
-.demo-replay {
+.demo-video iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
   display: block;
-  margin: 28px auto 0;
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 0.9rem;
-  padding: 10px 28px;
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-hover);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: color 0.2s, border-color 0.2s;
-}
-
-.demo-replay:hover {
-  color: var(--text-primary);
-  border-color: var(--text-secondary);
 }
 
 /* ============================
@@ -1767,6 +1598,108 @@ section {
   font-weight: 600;
   font-size: 0.95rem;
   color: var(--text-primary);
+}
+
+/* ============================
+   Email Signup
+============================ */
+.email-signup {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.email-signup-field {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--border-hover);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-card);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.email-signup-field:focus-within {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 3px rgba(200, 155, 60, 0.12);
+}
+
+.email-signup-input {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  padding: 12px 16px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  min-width: 200px;
+}
+
+.email-signup-input::placeholder {
+  color: var(--text-muted);
+}
+
+.email-signup-submit {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #C89B3C, #A67C2E);
+  color: var(--bg-primary);
+  border: none;
+  cursor: pointer;
+  transition: filter 0.2s;
+  white-space: nowrap;
+}
+
+.email-signup-submit:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.email-signup-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.email-signup-error {
+  font-size: 0.8rem;
+  color: var(--accent-red);
+  margin: 0;
+}
+
+.email-signup-success {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--accent-green);
+  display: inline-block;
+  padding: 12px 24px;
+}
+
+/* Compact variant (navbar) */
+.email-signup.compact .email-signup-field {
+  border-radius: 100px;
+}
+
+.email-signup.compact .email-signup-input {
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  min-width: 160px;
+}
+
+.email-signup.compact .email-signup-submit {
+  font-size: 0.82rem;
+  padding: 8px 16px;
+  border-radius: 0 100px 100px 0;
+}
+
+.email-signup-success.compact {
+  font-size: 0.82rem;
+  padding: 9px 18px;
+  color: var(--accent-gold);
+  background: rgba(200, 155, 60, 0.08);
+  border-radius: 100px;
 }
 
 /* ============================

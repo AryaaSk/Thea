@@ -36,6 +36,7 @@ function App() {
       <Navbar />
       <main id="main-content">
         <Hero />
+        <Demo />
         <div className="content-with-line">
           <Problem />
           <Features />
@@ -43,7 +44,6 @@ function App() {
           <Comparison />
           <HowItWorks />
           <VoiceDemo />
-          <Demo />
           <Journey />
           <WhatCanIDo />
           <Testimonials />

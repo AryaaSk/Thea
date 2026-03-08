@@ -2,6 +2,8 @@ node_modules
 dist
 dist-electron
 .env
+.env.local
+.env*.local
 resources/openclaw/node
 resources/openclaw/node.exe
 resources/openclaw/node_modules
